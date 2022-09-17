@@ -1,0 +1,16 @@
+[package]
+name = "rust-seq2kminmers"
+authors = ["Rayan Chikhi <rayan.chikhi@pasteur.fr>", "Baris Ekim"]
+description = "Construction and iteration of k-min-mers from a DNA sequence."
+version = "0.1.0"
+edition = "2021"
+keywords = ["bioinformatics"]
+categories = ["science", "algorithms"]
+license = "MIT/Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+array_tool = "*"
+nthash = "*"
+thiserror = "1.0"
