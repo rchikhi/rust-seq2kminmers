@@ -64,17 +64,16 @@ fn rc(nt: u8) -> u64 {
 /// exposes many other useful methods. In this example we use `collect` to
 /// generate all hashes and put them in a `Vec<u64>`.
 /// ```
-///     # use nthash::Result;
-///     use nthash::NtHashHPCIterator;
+///     use rust_seq2kminmers::NtHashHPCIterator;
 ///
-///     # fn main() -> Result<()> {
-///     let seq = b"ACTGC";
-///     let hash_bound = 0.1;
-///     let iter = NtHashHPCIterator::new(seq, 3, hash_bound)?;
-///     let hashes: Vec<u64> = iter.collect();
+///     # fn main() {
+///     let seq = b"ACTGCACATGATGAGTAGATGATGATGATGATGATATGATGATAT";
+///     let density = 0.1;
+///     let hash_bound = ((density as f64) * (u64::max_value() as f64)) as u64;
+///     let iter = NtHashHPCIterator::new(seq, 4, hash_bound).unwrap();
+///     let hashes: Vec<(usize,u64)> = iter.collect();
 ///     assert_eq!(hashes,
-///                vec![0x9b1eda9a185413ce, 0x9f6acfa2235b86fc, 0xd4a29bf149877c5c]);
-///     # Ok(())
+///                vec![(0, 1693589515812555183), (6, 876319423165292601), (13,771890730643629033), (16, 826464090118103095), (33, 1245321008145464903), (34,1193606442387228521)]);
 ///     # }
 /// ```
 
@@ -201,7 +200,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = (self.seq_len - self.k + 1) * (self.hash_bound as u64) as usize; // rough estimation
+        let size_hint = (self.seq_len - self.k + 1) * (((self.hash_bound as f64) / (u64::max_value() as f64)) as u64) as usize; // rough estimation
         (size_hint, Some(size_hint)) 
     }
 }

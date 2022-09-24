@@ -2,7 +2,7 @@ use nthash::NtHashIterator;
 mod kminmer;
 use kminmer::Kminmer;
 mod nthash_hpc;
-use nthash_hpc::NtHashHPCIterator;
+pub use nthash_hpc::NtHashHPCIterator;
 use std::io::Result;
 
 // An iterator for getting k-min-mers out of a DNA sequence
@@ -39,6 +39,7 @@ pub struct KminmersIterator<'a> {
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<u64>,
     curr_pos : Vec::<usize>,
+    count : usize,
 }
 
 impl<'a> KminmersIterator<'a> {
@@ -71,6 +72,7 @@ impl<'a> KminmersIterator<'a> {
             nthash_iterator: nthash_iterator,
             curr_pos,
             curr_sk,
+            count : 0
         })
     }
 }
@@ -110,9 +112,10 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() == self.k { 
-                kminmer = Kminmer::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1], j);
+                kminmer = Kminmer::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1], self.count);
                 self.curr_sk = self.curr_sk[1..self.k].to_vec();
                 self.curr_pos = self.curr_pos[1..self.k].to_vec();
+                self.count += 1;
                 break; 
             }
         }
