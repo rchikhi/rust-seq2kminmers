@@ -1,6 +1,6 @@
 use nthash::NtHashIterator;
 mod kminmer;
-use kminmer::Kminmer;
+pub use kminmer::Kminmer;
 mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
 use std::io::Result;
@@ -33,6 +33,7 @@ use std::io::Result;
 pub struct KminmersIterator<'a> {
     seq_pos : usize, 
     k: usize,
+    l: usize,
     hash_bound: u64,
     hpc: bool,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
@@ -66,6 +67,7 @@ impl<'a> KminmersIterator<'a> {
         Ok(KminmersIterator {
             seq_pos: 0,
             k,
+            l,
             hash_bound,
             hpc,
             nthash_hpc_iterator: nthash_hpc_iterator,
@@ -112,7 +114,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() == self.k { 
-                kminmer = Kminmer::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1], self.count);
+                kminmer = Kminmer::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1] + self.l - 1, self.count);
                 self.curr_sk = self.curr_sk[1..self.k].to_vec();
                 self.curr_pos = self.curr_pos[1..self.k].to_vec();
                 self.count += 1;
