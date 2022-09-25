@@ -14,3 +14,12 @@ license = "MIT/Apache-2.0"
 array_tool = "1.0.3"
 nthash = "0.5.1"
 thiserror = "1.0"
+
+[dev-dependencies]
+criterion = "^0.2"
+quickcheck = "^0.7.1"
+rand = "^0.5"
+
+[[bench]]
+name = "bench"
+harness = false
