@@ -10,7 +10,8 @@ use criterion::{Bencher, Criterion, Fun};
 use rand::distributions::{Distribution, Uniform};
 
 use nthash::{nthash, NtHashIterator};
-use rust_seq2kminmers::{KminmersIterator,Kminmer, NtHashHPCIterator};
+#[allow(unused_imports)]
+use rust_seq2kminmers::{KminmersIterator,Kminmer, NtHashHPCIterator, nthash_c};
 
 fn nthash_bench(c: &mut Criterion) {
     let range = Uniform::from(0..4);
@@ -39,7 +40,7 @@ fn nthash_bench(c: &mut Criterion) {
         })
     });
 
-   let nthash_new_it_hpc = Fun::new("nthash_new_iterator_hpc", |b: &mut Bencher, i: &String| {
+    let nthash_new_it_hpc = Fun::new("nthash_new_iterator_hpc", |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let density : f64 = 1.0;
             let hash_bound = ((density as f64) * (u64::max_value() as f64)) as u64;
@@ -55,14 +56,32 @@ fn nthash_bench(c: &mut Criterion) {
         })
     });
 
-   let kminmers_hpc = Fun::new("kminmers_hpc", |b: &mut Bencher, i: &String| {
+    let kminmers_hpc = Fun::new("kminmers_hpc", |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, true).unwrap();
             let _res = iter.collect::<Vec<Kminmer>>();
         })
     });
 
-    let functions = vec![nthash_orig_it, nthash_orig_simple, nthash_new_it_hpc, kminmers, kminmers_hpc];
+    // The following bench requires to have compiled ntHash-C (https://github.com/rchikhi/ntHash-C)
+    // Then uncomment those lines below and run with:
+    //
+    //   LD_LIBRARY_PATH=path_to_ntHash-C/ \
+    //   RUSTFLAGS='-Lpath_to_ntHash-C/ -lnthashc'  cargo bench \
+    //   nthash_c_simple
+    //
+    // Spoiler: it's around the same speed as the rust implementation
+    /*
+    let nthash_c_simple = Fun::new("nthash_c_simple", |b: &mut Bencher, i: &String| {
+        b.iter(|| {
+            nthash_c(i.as_bytes(),5);
+        })
+    });
+    */
+
+    let functions = vec![nthash_orig_it, nthash_orig_simple, nthash_new_it_hpc, kminmers, kminmers_hpc,
+                       //nthash_c_simple,
+    ];
     c.bench_functions("nthash", functions, seq);
 }
 
