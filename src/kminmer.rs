@@ -147,6 +147,9 @@ impl KminmerHash {
             rev,
         }    
     }
+    pub fn get_hash(&self) -> u32 {
+        self.hash
+    }
 }
 
 // Various impls for Kminmer.
