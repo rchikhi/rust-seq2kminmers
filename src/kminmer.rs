@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::vec::Vec;
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
+use fxhash::{hash, hash32, hash64};
 
 #[derive(Clone, Debug)]
 pub struct Kminmer {
@@ -35,7 +36,7 @@ impl Kminmer {
         let mut rev_mers = self.mers.clone();
         rev_mers.reverse();
         if rev_mers < self.mers {
-            self.mers = rev_mers.to_vec();
+            self.mers = rev_mers;
             self.rev = true;
         }
     }
@@ -68,6 +69,16 @@ impl Kminmer {
         let mut hash = DefaultHasher::new();
         self.mers.hash(&mut hash);
         hash.finish()
+    }
+
+    pub fn get_hash_usize(&self) -> usize {
+        hash(&self.mers)
+    }
+    pub fn get_hash_u32(&self) -> u32 {
+        hash32(&self.mers)
+    }
+    pub fn get_hash_u64(&self) -> u64 {
+        hash64(&self.mers)
     }
 }
 
