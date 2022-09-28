@@ -123,6 +123,7 @@ impl<'a> NtHashHPCIterator<'a> {
         let mut h_buffer:   [u64;  BUFLEN]  = [0; BUFLEN];
         let mut rc_buffer:  [u64;  BUFLEN]  = [0; BUFLEN];
         let mut idx_buffer: [usize;BUFLEN]  = [0; BUFLEN];
+
         // pre-compute hash of first kmer in HPC space
         while i < k && j < seq_len
         {
@@ -137,6 +138,7 @@ impl<'a> NtHashHPCIterator<'a> {
             prev_j = j;
             while j < seq_len &&  seq[j] == prev { j += 1};
         }
+
         // if sequence is shorter than k in HPC space: hash will be incorrect and i<k , but that's ok, 
         // hash is only returned later in the iterator where proper length checks are performed
         assert!( (j >= seq_len && i < k) || (j < seq_len && i==k) );
@@ -183,52 +185,47 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
 
     fn next(&mut self) -> Option<(usize,u64)> {
         unsafe {
-        let mut hash;
-        let mut prev_current_idx;
-        loop
-        {
-            if self.after_first_iter {
-                //let i = self.current_idx - 1;
-                //let seqi = self.seq[i];
-                let h_seqi  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
-                let rc_seqi = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
-                //let seqk = self.seq[self.current_idx_plus_k];
-                let h_seqk  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
-                let rc_seqk = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
-
-                self.fh = self.fh.rotate_left(1) ^ h_seqi.rotate_left(self.k as u32) ^ h_seqk;
-
-                self.rh = self.rh.rotate_right(1)
-                    ^ rc_seqi.rotate_right(1)
-                    ^ rc_seqk.rotate_left(self.k as u32 - 1);
-
-                 //println!(" h_seqi {} rc_seqk {}", h_seqi,rc_seqk);
-            }
-            
-            hash = u64::min(self.rh, self.fh);
-
-            // update (current,current+k) pointers to next positions in HPC space
-            let prev = self.seq.get_unchecked(self.current_idx_plus_k);
-            prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos,BUFLEN));
-            while self.current_idx_plus_k < self.seq_len  && self.seq.get_unchecked(self.current_idx_plus_k) == prev 
+            let mut hash;
+            let mut prev_current_idx;
+            loop
             {
-                self.current_idx_plus_k += 1;
+                if self.after_first_iter {
+                    let h_seqi  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
+                    let rc_seqi = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
+                    let h_seqk  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
+                    let rc_seqk = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
+
+                    self.fh = self.fh.rotate_left(1) ^ h_seqi.rotate_left(self.k as u32) ^ h_seqk;
+
+                    self.rh = self.rh.rotate_right(1)
+                        ^ rc_seqi.rotate_right(1)
+                        ^ rc_seqk.rotate_left(self.k as u32 - 1);
+                }
+
+                hash = u64::min(self.rh, self.fh);
+
+                let prev = self.seq.get_unchecked(self.current_idx_plus_k);
+                prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos,BUFLEN));
+                while self.current_idx_plus_k < self.seq_len  && self.seq.get_unchecked(self.current_idx_plus_k) == prev 
+                {
+                    self.current_idx_plus_k += 1;
+                }
+
+                if self.current_idx_plus_k >= self.seq_len - 1 {
+                    return None;
+                };
+
+                let v = *self.seq.get_unchecked(self.current_idx_plus_k);
+                *self.h_buffer  .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = h(v);
+                *self.rc_buffer .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = rc(v);
+                *self.idx_buffer.get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = self.current_idx_plus_k;
+                self.buffer_pos += 1;
+                self.after_first_iter = true; 
+
+                if hash <= self.hash_bound { break; }
             }
 
-            if self.current_idx_plus_k >= self.seq_len - 1 {
-                return None;
-            };
-
-            let v = *self.seq.get_unchecked(self.current_idx_plus_k);
-            *self.h_buffer  .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = h(v);
-            *self.rc_buffer .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = rc(v);
-            *self.idx_buffer.get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = self.current_idx_plus_k;
-            self.buffer_pos += 1;
-            self.after_first_iter = true; 
-
-            if hash <= self.hash_bound { break; }
-        }
-        Some((prev_current_idx, hash))
+            Some((prev_current_idx, hash))
         }
     }
 
