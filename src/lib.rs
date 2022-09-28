@@ -7,8 +7,7 @@ pub use nthash_hpc::NtHashHPCIterator;
 mod nthash_c;
 pub use nthash_c::nthash_c;
 
-use std::io::{Result, Write, Lines, BufReader, BufRead};
-use std::fs::{File, OpenOptions};
+use std::io::{Result};
 
 // An iterator for getting k-min-mers out of a DNA sequence
 ///

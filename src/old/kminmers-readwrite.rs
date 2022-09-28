@@ -1,5 +1,7 @@
 // written by Baris but unused so far. Formerly in kminmers.rs 
 
+use std::fs::{File, OpenOptions};
+
 pub struct KminmersWriteIterator<'a> {
     seq_pos : usize, 
     k: usize,

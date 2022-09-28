@@ -126,8 +126,8 @@ pub struct KminmerHash {
 impl KminmerHash {
     // Create a new Kminmer object.
     pub fn new(mers: &Vec<u64>, start: usize, end: usize, offset: usize) -> Self {
-        let mut hash;
-        let mut rev;
+        let hash;
+        let rev;
         let mut rev_mers = mers.clone();
         rev_mers.reverse();
         if &rev_mers < mers {
