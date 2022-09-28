@@ -118,7 +118,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
 
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
-            if self.curr_sk.len() == self.k { 
+            if self.curr_sk.len() >= self.k { 
                 kminmer = Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count);
                 self.count += 1;
                 break; 
@@ -214,7 +214,7 @@ impl<'a> Iterator for KminmersHashIterator<'a> {
             self.curr_sk.push(hash);
             if self.curr_sk.len() == self.k { 
                 kminmer = KminmerHash::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1] + self.l - 1, self.count);
-                self.curr_sk = self.curr_sk[1..self.k].to_vec();
+                self.curr_sk = self.curr_sk[1..self.k].to_vec(); // TODO get rid of those lines as above
                 self.curr_pos = self.curr_pos[1..self.k].to_vec();
                 self.count += 1;
                 break; 
