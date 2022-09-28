@@ -1,3 +1,4 @@
+#![feature(core_intrinsics)]
 use nthash::NtHashIterator;
 mod kminmer;
 pub use kminmer::Kminmer;
