@@ -23,3 +23,7 @@ rand = "^0.5"
 [[bench]]
 name = "bench"
 harness = false
+
+
+[profile.bench]
+debug = true # for profiling

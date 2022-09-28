@@ -1,0 +1,7 @@
+ useful commands:
+
+valgrind --tool=callgrind          --dump-instr=yes          --collect-jumps=yes          --simulate-cache=yes target/release/deps/bench-XXXXX --bench kminmers
+
+# using cargo-show-asm not cargo-asm crate
+RUSTFLAGS="-C target-cpu=native"  cargo asm --lib "<rust_seq2kminmers::nthash_hpc::NtHashHPCIterator as core::iter::traits::iterator::Iterator>::next"  --rust
+

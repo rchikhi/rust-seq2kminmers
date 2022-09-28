@@ -44,10 +44,10 @@ const RC_LOOKUP: [u64; 256] = {
 fn h(c: u8) -> u64 {
     unsafe{
     let val = H_LOOKUP.get_unchecked(c as usize);
-    // this branch.. is unsatisfactory. but remarkably, having it doesn't seem to make a different in benchs
-    if *val == 1 {
+    // performance hog
+/*    if val == 1 {
         panic!("Non-ACGTN nucleotide encountered! {}", c as char)
-    }
+    }*/
     *val
     }
 }
@@ -56,9 +56,11 @@ fn h(c: u8) -> u64 {
 fn rc(nt: u8) -> u64 {
     unsafe{
     let val = RC_LOOKUP.get_unchecked(nt as usize);
-    if *val == 1 {
+    
+    // performance hog
+/*    if val == 1 {
         panic!("Non-ACGTN nucleotide encountered! {}", nt as char)
-    }
+    }*/
     *val
     }
 }
@@ -86,7 +88,7 @@ fn rc(nt: u8) -> u64 {
 #[derive(Debug)]
 pub struct NtHashHPCIterator<'a> {
     seq: &'a [u8],
-    k: usize, // TODO: I wonder what would happen if i set k has a const=32, in terms of performance
+    k: usize,
     fh: u64,
     rh: u64,
     current_idx_plus_k: usize,

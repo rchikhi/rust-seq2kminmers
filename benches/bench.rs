@@ -56,14 +56,14 @@ fn nthash_bench(c: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("kminmers", seq_len), &seq,
         |b: &mut Bencher, i: &String| {
         b.iter(|| {
-            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, false).unwrap();
+            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.1, false).unwrap();
             let _res = iter.collect::<Vec<Kminmer>>();
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_hpc", seq_len), &seq,
         |b: &mut Bencher, i: &String| {
         b.iter(|| {
-            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, true).unwrap();
+            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.1, true).unwrap();
             let _res = iter.collect::<Vec<Kminmer>>();
         })});
 

@@ -64,7 +64,6 @@ impl Kminmer {
 
     // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
     pub fn get_hash(&self) -> u64 {
-        assert!(self.is_normalized()); // TODO remove this if no issue
         let mut hash = DefaultHasher::new();
         self.mers.hash(&mut hash);
         hash.finish()
