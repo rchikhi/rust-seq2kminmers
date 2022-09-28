@@ -5,6 +5,8 @@ mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
 use std::io::{Result, Write, Lines, BufReader, BufRead};
 use std::fs::{File, OpenOptions};
+use fxhash::{hash, hash32, hash64};
+
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
 /// Parameters:
@@ -296,7 +298,8 @@ pub struct KminmersHashIterator<'a> {
     hpc: bool,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
     nthash_iterator: Option<NtHashIterator<'a>>,
-    curr_sk : Vec::<u64>,
+    curr_sk_f : Vec::<u64>,
+    curr_sk_r : Vec::<u64>,
     curr_pos : Vec::<usize>,
     count : usize,
 }
@@ -319,7 +322,8 @@ impl<'a> KminmersHashIterator<'a> {
             }
         }
 
-        let curr_sk = Vec::<u64>::new();
+        let curr_sk_f = Vec::<u64>::new();
+        let curr_sk_r = Vec::<u64>::new();
         let curr_pos = Vec::<usize>::new();
 
         Ok(KminmersHashIterator {
@@ -331,7 +335,8 @@ impl<'a> KminmersHashIterator<'a> {
             nthash_hpc_iterator: nthash_hpc_iterator,
             nthash_iterator: nthash_iterator,
             curr_pos,
-            curr_sk,
+            curr_sk_f,
+            curr_sk_r,
             count : 0
         })
     }
@@ -344,13 +349,15 @@ impl<'a> Iterator for KminmersHashIterator<'a> {
         let kminmer;
         loop
         {
-            let mut j;
-            let mut hash;
+            let mut j_f = 0;
+            let mut hash_f = 0;
+            let mut j = 0;
+            let mut hash = 0;
             if self.hpc
-            {
+            {   
                 match self.nthash_hpc_iterator.as_mut().unwrap().next()
                 {
-                    Some(n) => { (j,hash) = n; } 
+                    Some(nf) => {(j_f, hash_f) = nf; } 
                     None => return None
                 };
             }
@@ -368,15 +375,23 @@ impl<'a> Iterator for KminmersHashIterator<'a> {
                     if hash < self.hash_bound { break; }
                 }
             }
-
-            self.curr_pos.push(j); // raw sequence position
-            self.curr_sk.push(hash);
-            if self.curr_sk.len() == self.k { 
-                kminmer = KminmerHash::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1] + self.l - 1, self.count);
-                self.curr_sk = self.curr_sk[1..self.k].to_vec();
+            
+            self.curr_pos.push(j_f); // raw sequence position
+            self.curr_sk_f.push(hash_f);
+            self.curr_sk_r.insert(0, hash_f);
+            if self.curr_sk_f.len() == self.k { 
+                let hash_f = hash32(&self.curr_sk_f);
+                let hash_r = hash32(&self.curr_sk_r);
+                let hash = match hash_r < hash_f {
+                    true => hash_r,
+                    false => hash_f,
+                };
+                kminmer = KminmerHash::new_with_hash(hash, self.curr_pos[0], self.curr_pos[self.k - 1] + self.l - 1, self.count, (hash_r == hash));
+                self.curr_sk_f = self.curr_sk_f[1..self.k].to_vec();
                 self.curr_pos = self.curr_pos[1..self.k].to_vec();
+                self.curr_sk_r = self.curr_sk_r[0..self.k-1].to_vec();
                 self.count += 1;
-                break; 
+                break;
             }
         }
         Some(kminmer)

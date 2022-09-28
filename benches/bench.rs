@@ -10,7 +10,7 @@ use criterion::{Bencher, Criterion, Fun};
 use rand::distributions::{Distribution, Uniform};
 
 use nthash::{nthash, NtHashIterator};
-use rust_seq2kminmers::{KminmersIterator,Kminmer, NtHashHPCIterator};
+use rust_seq2kminmers::{KminmersIterator, Kminmer, KminmerHash, KminmersHashIterator, NtHashHPCIterator};
 
 fn nthash_bench(c: &mut Criterion) {
     let range = Uniform::from(0..4);
@@ -62,7 +62,14 @@ fn nthash_bench(c: &mut Criterion) {
         })
     });
 
-    let functions = vec![nthash_orig_it, nthash_orig_simple, nthash_new_it_hpc, kminmers, kminmers_hpc];
+    let kminmers_hash = Fun::new("kminmers_hash", |b: &mut Bencher, i: &String| {
+        b.iter(|| {
+            let iter = KminmersHashIterator::new(i.as_bytes(), 10, 5, 0.01, true).unwrap();
+            let _res = iter.collect::<Vec<KminmerHash>>();
+        })
+    });
+
+    let functions = vec![nthash_orig_it, nthash_orig_simple, nthash_new_it_hpc, kminmers, kminmers_hpc, kminmers_hash];
     c.bench_functions("nthash", functions, seq);
 }
 

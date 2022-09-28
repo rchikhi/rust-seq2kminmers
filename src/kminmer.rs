@@ -126,21 +126,9 @@ pub struct KminmerHash {
 
 impl KminmerHash {
     // Create a new Kminmer object.
-    pub fn new(mers: &Vec<u64>, start: usize, end: usize, offset: usize) -> Self {
-        let mut hash;
-        let mut rev;
-        let mut rev_mers = mers.clone();
-        rev_mers.reverse();
-        if &rev_mers < mers {
-            hash = hash32(&rev_mers);
-            rev = true;
-        }
-        else {
-            hash = hash32(mers); 
-            rev = false;
-        }
+    pub fn new(mers: &Vec<u64>, start: usize, end: usize, offset: usize, rev: bool) -> Self {
         KminmerHash {
-            hash,
+            hash: hash32(mers),
             start,
             end,
             offset,
@@ -149,6 +137,16 @@ impl KminmerHash {
     }
     pub fn get_hash(&self) -> u32 {
         self.hash
+    }
+
+    pub fn new_with_hash(hash: u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
+        KminmerHash {
+            hash,
+            start,
+            end,
+            offset,
+            rev,
+        } 
     }
 }
 
@@ -172,7 +170,7 @@ impl Ord for KminmerHash {
     }
 }
 
-impl PartialOrd for KminmerHash{
+impl PartialOrd for KminmerHash {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
