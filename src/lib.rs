@@ -217,7 +217,7 @@ impl<'a> Iterator for KminmersHashIterator<'a> {
             self.curr_pos.push(j_f); // raw sequence position
             self.curr_sk_f.push(hash_f);
             self.curr_sk_r.insert(0, hash_f);
-            if self.curr_sk_f.len() == self.k { 
+            if self.curr_sk_f.len() >= self.k { 
                 let hash_f = hash32(&self.curr_sk_f[self.count..self.count+self.k]);
                 let hash_r = hash32(&self.curr_sk_r[0..self.k]);
                 let hash = match hash_r < hash_f {
