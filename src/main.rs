@@ -58,7 +58,7 @@ fn main() {
             is_fasta = true;
         }
 
-        let process_seq_aux = |seq_str: &[u8], seq_id: &str| -> Option<u64> {
+        let process_seq_aux = |seq_str: &[u8], _seq_id: &str| -> Option<u64> {
             let iter = KminmersIterator::new(seq_str, k, l, d, true).unwrap();
             for kminmer in iter
             {
