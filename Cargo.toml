@@ -27,6 +27,8 @@ rand = "^0.5"
 name = "bench"
 harness = false
 
+#[profile.release]
+#debug = true # for callgrind
 
-[profile.bench]
-debug = true # for profiling
+#[profile.bench]
+#debug = true

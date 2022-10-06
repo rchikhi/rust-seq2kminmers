@@ -10,6 +10,10 @@ const BUFLEN :usize = 256;
 // this implem is more limited
 const MAXIMUM_K_SIZE: usize = BUFLEN;
 
+//const TEST_CONST_K : usize = 32; 
+// tested if giving a const instead of a variable k helps
+// spoiler: just a bit (9% perf gain on a 40secs test, ie 3.x secs)
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("K size {ksize} is out of range for the given sequence size {seq_size}")]
@@ -141,7 +145,7 @@ impl<'a> NtHashHPCIterator<'a> {
 
         // if sequence is shorter than k in HPC space: hash will be incorrect and i<k , but that's ok, 
         // hash is only returned later in the iterator where proper length checks are performed
-        assert!( (j >= seq_len && i < k) || (j < seq_len && i==k) );
+        assert!( (j >= seq_len && i < k) || (j <= seq_len && i==k) );
 
         // at this point just assume we're at position i==k in HPC space, j in non-HPC space,
         // read the sequence backwards to get hash of reverse complement
@@ -185,6 +189,8 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
 
     fn next(&mut self) -> Option<(usize,u64)> {
         unsafe {
+            //let k = TEST_CONST_K;
+            let k = self.k;
             let mut hash;
             let mut prev_current_idx;
             loop
@@ -192,14 +198,14 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                 if self.after_first_iter {
                     let h_seqi  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
                     let rc_seqi = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos-1,BUFLEN));
-                    let h_seqk  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
-                    let rc_seqk = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+self.k-1,BUFLEN));
+                    let h_seqk  = self.h_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+k-1,BUFLEN));
+                    let rc_seqk = self.rc_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+k-1,BUFLEN));
 
-                    self.fh = self.fh.rotate_left(1) ^ h_seqi.rotate_left(self.k as u32) ^ h_seqk;
+                    self.fh = self.fh.rotate_left(1) ^ h_seqi.rotate_left(k as u32) ^ h_seqk;
 
                     self.rh = self.rh.rotate_right(1)
                         ^ rc_seqi.rotate_right(1)
-                        ^ rc_seqk.rotate_left(self.k as u32 - 1);
+                        ^ rc_seqk.rotate_left(k as u32 - 1);
                 }
 
                 hash = u64::min(self.rh, self.fh);
@@ -216,9 +222,9 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                 };
 
                 let v = *self.seq.get_unchecked(self.current_idx_plus_k);
-                *self.h_buffer  .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = h(v);
-                *self.rc_buffer .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = rc(v);
-                *self.idx_buffer.get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+self.k,BUFLEN)) = self.current_idx_plus_k;
+                *self.h_buffer  .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+k,BUFLEN)) = h(v);
+                *self.rc_buffer .get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+k,BUFLEN)) = rc(v);
+                *self.idx_buffer.get_unchecked_mut(std::intrinsics::unchecked_rem(self.buffer_pos+k,BUFLEN)) = self.current_idx_plus_k;
                 self.buffer_pos += 1;
                 self.after_first_iter = true; 
 
