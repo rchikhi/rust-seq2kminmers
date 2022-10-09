@@ -16,7 +16,7 @@ pub use hpc::{hpc, encode_rle, encode_rle_simd};
 
 use std::io::{Result};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum HashMode {
     Regular,
     Hpc,
@@ -204,7 +204,11 @@ impl<'a> KminmersHashIterator<'a> {
             {
                 nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound));
             }
-            if mode == HashMode::Hpc
+            else if mode == HashMode::Simd
+            {
+                nthash_simd_iterator = Some(NtHashSIMDIterator::new(seq, l, hash_bound));
+            }
+            else if mode == HashMode::Hpc
             {
                 nthash_hpc_iterator = Some(NtHashHPCIterator::new(seq, l, hash_bound).unwrap());
             }

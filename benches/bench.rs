@@ -36,13 +36,12 @@ fn nthash_bench(c: &mut Criterion) {
         })});*/
 
       group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let hpc_str = rust_seq2kminmers::hpc(i);
+            let _hpc_str = rust_seq2kminmers::hpc(i);
         })});
 
       group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let hpc_str = rust_seq2kminmers::encode_rle_simd(i);
+            let _hpc_str = rust_seq2kminmers::encode_rle_simd(i);
         })});
-
 
     group.bench_with_input(BenchmarkId::new("nthash_orig_iterator", seq_len), &seq,
             |b: &mut Bencher, i: &String| {
@@ -67,17 +66,23 @@ fn nthash_bench(c: &mut Criterion) {
             let _res = iter.collect::<Vec<(usize, H)>>();
         })});
 
+      group.bench_with_input(BenchmarkId::new("kminmers_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Simd).unwrap();
+            let _res = iter.collect::<Vec<Kminmer>>();
+        })});
+
+
     group.bench_with_input(BenchmarkId::new("kminmers", seq_len), &seq,
         |b: &mut Bencher, i: &String| {
         b.iter(|| {
-            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.1, HashMode::Regular).unwrap();
+            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Regular).unwrap();
             let _res = iter.collect::<Vec<Kminmer>>();
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_hpc", seq_len), &seq,
         |b: &mut Bencher, i: &String| {
         b.iter(|| {
-            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.1, HashMode::Hpc).unwrap();
+            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Hpc).unwrap();
             let _res = iter.collect::<Vec<Kminmer>>();
         })});
 
