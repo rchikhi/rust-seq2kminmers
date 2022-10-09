@@ -22,10 +22,10 @@ pub enum HashMode {
     HpcSimd
 }
 
-pub type H  = u32; // hash precision
-pub type FH = f32;
-//pub type H  = u64; 
-//pub type FH = f64;
+//pub type H  = u32; // hash precision
+//pub type FH = f32;
+pub type H  = u64; 
+pub type FH = f64;
 
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
