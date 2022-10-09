@@ -7,9 +7,11 @@ use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use fxhash::{hash, hash32, hash64};
 
+use crate::H;
+
 #[derive(Clone, Debug)]
 pub struct Kminmer {
-    mers: Vec<u64>, // Raw Vec of minimizer hashes
+    mers: Vec<H>, // Raw Vec of minimizer hashes
     pub start: usize, // Start location
     pub end: usize, // End location
     pub offset: usize, // Offset (index in the k-min-mer array)
@@ -19,7 +21,7 @@ pub struct Kminmer {
 
 impl Kminmer {
     // Create a new Kminmer object.
-    pub fn new(mers: &[u64], start: usize, end: usize, offset: usize) -> Self {
+    pub fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
         let mut obj = Kminmer {
             mers: Vec::from(mers),
             start,
@@ -59,7 +61,7 @@ impl Kminmer {
     }
     
     // Obtain a raw Vec of minimizer hashes.
-    pub fn mers(&self) -> Vec<u64> {
+    pub fn mers(&self) -> Vec<H> {
         self.mers.to_vec()
     }
 
@@ -125,7 +127,7 @@ pub struct KminmerHash {
 
 impl KminmerHash {
     // Create a new Kminmer object.
-    pub fn new(mers: &Vec<u64>, start: usize, end: usize, offset: usize) -> Self {
+    pub fn new(mers: &Vec<H>, start: usize, end: usize, offset: usize) -> Self {
         let hash;
         let rev;
         let mut rev_mers = mers.clone();

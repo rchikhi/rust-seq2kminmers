@@ -6,6 +6,7 @@
 #[macro_use]
 extern crate criterion;
 
+use rust_seq2kminmers::{FH,H};
 use criterion::{Bencher, Criterion, Throughput, BenchmarkId};
 use rand::distributions::{Distribution, Uniform};
 
@@ -30,12 +31,25 @@ fn nthash_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("BenchmarkGroup");
     group.throughput(Throughput::Bytes(seq.len() as u64));
 
+/*    group.bench_with_input(BenchmarkId::new("encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+            let hpc_str = rust_seq2kminmers::encode_rle(i);
+        })});*/
+
+      group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+            let hpc_str = rust_seq2kminmers::hpc(i);
+        })});
+
+      group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+            let hpc_str = rust_seq2kminmers::encode_rle_simd(i);
+        })});
+
+
     group.bench_with_input(BenchmarkId::new("nthash_orig_iterator", seq_len), &seq,
             |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = NtHashIterator::new(i.as_bytes(), 5).unwrap();
             //  iter.for_each(drop);
-            let _res = iter.collect::<Vec<u64>>();
+            let _res = iter.collect::<Vec<u64>>(); // original nthash iterator only has 64 bits
         })});
 
     group.bench_with_input(BenchmarkId::new("nthash_orig_simple", seq_len), &seq,
@@ -48,9 +62,9 @@ fn nthash_bench(c: &mut Criterion) {
         |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let density : f64 = 1.0;
-            let hash_bound = ((density as f64) * (u64::max_value() as f64)) as u64;
+            let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
             let iter = NtHashHPCIterator::new(i.as_bytes(), 5, hash_bound).unwrap();
-            let _res = iter.collect::<Vec<(usize, u64)>>();
+            let _res = iter.collect::<Vec<(usize, H)>>();
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers", seq_len), &seq,
