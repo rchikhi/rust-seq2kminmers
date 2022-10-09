@@ -15,8 +15,8 @@ array_tool = "1.0.3"
 nthash = "0.5.1"
 thiserror = "1.0"
 fxhash = "0.2.1"
-rust-parallelfastx = "0.1.1"
-#rust-parallelfastx = { path = "../rust-parallelfastx" }
+#rust-parallelfastx = "0.1.1"
+rust-parallelfastx = { git = "https://github.com/rchikhi/rust-parallelfastx"  }
 
 [dev-dependencies]
 criterion = "0.4.0"

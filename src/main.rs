@@ -32,7 +32,7 @@ fn main() {
 
 
         let task = |seq_str: &[u8], _seq_id: &str|  {
-            let iter = KminmersIterator::new(seq_str, k, l, d, HashMode::Hpc).unwrap();
+            let iter = KminmersIterator::new(seq_str, l, k, d, HashMode::Hpc).unwrap();
             //let iter :Vec<u64> = vec![];
             for kminmer in iter
             {

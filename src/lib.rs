@@ -5,6 +5,8 @@ mod kminmer;
 pub use kminmer::{Kminmer, KminmerHash};
 mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
+mod nthash_simd;
+pub use nthash_simd::NtHashSIMDIterator;
 mod nthash_hpc_simd;
 pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
 mod nthash_c;
@@ -63,6 +65,7 @@ pub struct KminmersIterator<'a> {
     mode: HashMode,
     nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
+    nthash_simd_iterator: Option<NtHashSIMDIterator>,
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<H>,
     curr_pos : Vec::<usize>,
@@ -76,10 +79,14 @@ impl<'a> KminmersIterator<'a> {
 
         let mut nthash_hpc_simd_iterator = None;
         let mut nthash_hpc_iterator = None;
+        let mut nthash_simd_iterator = None;
         let mut nthash_iterator = None;
         if seq.len() > l {
             if mode == HashMode::Hpc {
                 nthash_hpc_iterator = Some(NtHashHPCIterator::new(seq, l, hash_bound).unwrap());
+            }
+            else if mode == HashMode::Simd {
+                nthash_simd_iterator = Some(NtHashSIMDIterator::new(seq, l, hash_bound));
             }
             else if mode == HashMode::HpcSimd {
                 nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound));
@@ -100,6 +107,7 @@ impl<'a> KminmersIterator<'a> {
             mode,
             nthash_hpc_simd_iterator,
             nthash_hpc_iterator,
+            nthash_simd_iterator,
             nthash_iterator,
             curr_pos,
             curr_sk,
@@ -119,6 +127,13 @@ impl<'a> Iterator for KminmersIterator<'a> {
             let mut hash: H;
             if self.mode == HashMode::HpcSimd {
                 match self.nthash_hpc_simd_iterator.as_mut().unwrap().next()
+                {
+                    Some(n) => { (j,hash) = n; } 
+                    None => return None
+                };
+            }
+            else if self.mode == HashMode::Simd {
+                match self.nthash_simd_iterator.as_mut().unwrap().next()
                 {
                     Some(n) => { (j,hash) = n; } 
                     None => return None
@@ -168,6 +183,7 @@ pub struct KminmersHashIterator<'a> {
     mode: HashMode,
     nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
+    nthash_simd_iterator: Option<NtHashSIMDIterator>,
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<H>,
     curr_pos : Vec::<usize>,
@@ -181,6 +197,7 @@ impl<'a> KminmersHashIterator<'a> {
 
         let mut nthash_hpc_simd_iterator : Option<NtHashHPCSIMDIterator> = None;
         let mut nthash_hpc_iterator = None;
+        let mut nthash_simd_iterator = None;
         let mut nthash_iterator = None;
         if seq.len() > l {
             if mode == HashMode::HpcSimd
@@ -208,6 +225,7 @@ impl<'a> KminmersHashIterator<'a> {
             mode,
             nthash_hpc_simd_iterator,
             nthash_hpc_iterator,
+            nthash_simd_iterator,
             nthash_iterator,
             curr_pos,
             curr_sk,
