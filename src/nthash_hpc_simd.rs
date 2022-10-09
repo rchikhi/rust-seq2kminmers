@@ -60,7 +60,7 @@ pub fn nthash_hpc_simd_32(n: &[u8], k: usize, hash_bound: H) -> Vec<H>
 
     unsafe {
         let hpc_layout = alloc::Layout::from_size_align_unchecked(len << 2, 8);
-        let hpc_ptr = alloc::alloc(hpc_layout) as *mut u32;
+        let hpc_ptr = alloc::alloc(hpc_layout) as *mut H;
 
         // TODO need special treatment for first 256 bytes (32 nucleotides)
 
