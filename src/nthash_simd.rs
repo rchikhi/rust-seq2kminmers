@@ -377,12 +377,13 @@ pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
     // maybe need to pad n
     let hashes_layout = alloc::Layout::from_size_align_unchecked(length*32, 8);
     let hashes_ptr = alloc::alloc(hashes_layout) as *mut u32;
-    let pos_layout = alloc::Layout::from_size_align_unchecked(length*32, 8);
+    let pos_layout = alloc::Layout::from_size_align_unchecked(length*64, 8);
     let pos_ptr = alloc::alloc(pos_layout) as *mut u32;
     let mut hashes_offset :u32 = 0;
     
         let _zero = _mm512_setzero_si512();
-        let mut _pos = _mm512_set_epi32(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        //let mut _pos = _mm512_set_epi32(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let mut _pos = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let mut _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
 
         let _k = _mm512_set1_epi32((31 - (k % 31)) as i32);
@@ -391,10 +392,18 @@ pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
         let _hashBound = _mm512_set1_epi32(hash_bound as i32);
 
         let (mut _hVal, mut _fhVal, mut _rhVal) = _mm512_NTC_epu32_initial(n, k, _k);
+        
+        let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
+        _mm512_mask_compressstoreu_epi32(hashes_ptr.offset(hashes_offset as isize) as *mut u8, mask, _hVal);
+        _mm512_mask_compressstoreu_epi32(pos_ptr.offset(hashes_offset as isize) as *mut u8, mask, _pos);
+        let nb_ones = mask.count_ones();
+        hashes_offset += nb_ones;
+        _pos = _mm512_add_epi32(_pos, _16);
 
-        let mut lo= _mm512_extracti64x4_epi64(_hVal, 0);
+         /*let mut lo= _mm512_extracti64x4_epi64(_hVal, 0);
         let mut hval0 = _mm256_extract_epi32(lo, 0);
         if debug { println!("first hash AVX512x32 {:x}", hval0); }
+        */
 
         let sentinel = length - k + 1;
         let mut i = 16;
@@ -412,7 +421,7 @@ pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
             i += 16;
         }
 
-	if (length - k) % 16 < 8{
+	/*if (length - k) % 16 < 8{
 	    lo = _mm512_extracti64x4_epi64(_hVal, 0); }
 	else {
 	    lo = _mm512_extracti64x4_epi64(_hVal, 1); }
@@ -433,11 +442,14 @@ pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
 	else if (length - k) % 8 == 7 {
 	    hval0 = _mm256_extract_epi32(lo, 7); }
         if debug { println!("final hash AVX512x32 {:x}", hval0); }
+        */
 
 
     let vec_hashes : Vec<u32> = Vec::from_raw_parts(hashes_ptr as *mut u32, hashes_offset as usize, hashes_offset as usize);
     let vec_pos : Vec<u32> = Vec::from_raw_parts(pos_ptr as *mut u32, hashes_offset as usize, hashes_offset as usize);
-    
+   
+    //println!("vec hashes {:?}",vec_hashes);
+    //println!("vec pos {:?}",vec_pos);
     vec_pos.iter().map(|&p| p as usize).zip(vec_hashes.iter().map(|&p| p as u64)).collect()
     }
 }
