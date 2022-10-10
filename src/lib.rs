@@ -171,27 +171,29 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() >= self.k { 
+                //assert!(self.curr_sk.len() == self.count+self.k) ;  // commented, but it's true
+                //assert!(self.curr_pos[self.count+self.k - 1] == j); // same
                 if self.curr_sk.len() == self.k
                 {
-                    self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()) as u32);
-                    self.kminmer_rhash ^= (hash as H).rotate_left(self.curr_sk.len() as u32)
+                    self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()-1) as u32);
+                    self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1)          as u32);
                 }
                 else
                 {
-                    self.kminmer_fhash ^= self.kminmer_fhash.rotate_left(1) ^ (hash as H) ^ (self.curr_pos[self.count] as H).rotate_left(self.k as u32);
-                    self.kminmer_rhash ^= self.kminmer_rhash.rotate_right(1) ^ (hash as H).rotate_left((self.k-1) as u32)  ^ (self.curr_pos[self.count] as H).rotate_right(1);
+                    self.kminmer_fhash ^= self.kminmer_fhash.rotate_left(1)  ^ (hash as H)                                 ^ (self.curr_sk[self.count-1] as H).rotate_left(self.k as u32);
+                    self.kminmer_rhash ^= self.kminmer_rhash.rotate_right(1) ^ (hash as H).rotate_left((self.k-1) as u32)  ^ (self.curr_sk[self.count-1] as H).rotate_right(1);
                 }
                 let hash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as u32;
-                res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count));
-                //res= Some(Kminmer::new(&self.curr_sk[0..0], 0,0,0));
-                //res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
+                //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
+                //res = Some(Kminmer::new(&self.curr_sk[0..0], 0, 0,0));
+                res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], j + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
                 self.count += 1;
                 break; 
             }
             else
             {
-                self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()) as u32);
-                self.kminmer_rhash ^= (hash as H).rotate_left(self.curr_sk.len() as u32)
+                self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()-1) as u32);
+                self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1) as u32);
             }
         }
         res
