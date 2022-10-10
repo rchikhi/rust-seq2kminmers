@@ -86,14 +86,6 @@ fn nthash_bench(c: &mut Criterion) {
             let _res = iter.collect::<Vec<Kminmer>>();
         })});
 
-    group.bench_with_input(BenchmarkId::new("kminmers_hash", seq_len), &seq,
-        |b: &mut Bencher, i: &String| {
-        b.iter(|| {
-            let iter = KminmersHashIterator::new(i.as_bytes(), 10, 5, 0.01, true).unwrap();
-            let _res = iter.collect::<Vec<KminmerHash>>();
-        })
-    });
-
     // The following bench requires to have compiled ntHash-C (https://github.com/rchikhi/ntHash-C)
     // Then uncomment those lines below and run with:
     /*
