@@ -2,6 +2,8 @@
 
 use std::ffi::CString;
 
+use crate::{H};
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct nthashc {
@@ -23,7 +25,7 @@ extern "C" {
         pub fn nthashc_roll(m: *mut nthashc_t) -> ::std::os::raw::c_int;
 }
 extern "C" {
-        pub fn nthashc_hashes(m: *mut nthashc_t, i: ::std::os::raw::c_uint) -> u64;
+        pub fn nthashc_hashes(m: *mut nthashc_t, i: ::std::os::raw::c_uint) -> H; // unsure if i'm allowed to declare output as H as it's originally u64 (should work fine when h=u64 though)
 }
 
 pub fn nthash_c(seq : & [u8], kmer_size: u32)

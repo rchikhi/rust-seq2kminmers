@@ -10,6 +10,8 @@ const BUFLEN :usize = 256;
 // this implem is more limited
 const MAXIMUM_K_SIZE: usize = BUFLEN;
 
+use crate::{H, FH}; // hash precision
+
 //const TEST_CONST_K : usize = 32; 
 // tested if giving a const instead of a variable k helps
 // spoiler: just a bit (9% perf gain on a 40secs test, ie 3.x secs)
@@ -24,45 +26,47 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-const H_LOOKUP: [u64; 256] = {
+#[allow(overflowing_literals)]
+const H_LOOKUP: [H; 256] = {
     let mut lookup = [1; 256];
-    lookup[b'A' as usize] = 0x3c8b_fbb3_95c6_0474;
-    lookup[b'C' as usize] = 0x3193_c185_62a0_2b4c;
-    lookup[b'G' as usize] = 0x2032_3ed0_8257_2324;
-    lookup[b'T' as usize] = 0x2955_49f5_4be2_4456;
+    lookup[b'A' as usize] = 0x3c8b_fbb3_95c6_0474 as H;
+    lookup[b'C' as usize] = 0x3193_c185_62a0_2b4c as H;
+    lookup[b'G' as usize] = 0x2032_3ed0_8257_2324 as H;
+    lookup[b'T' as usize] = 0x2955_49f5_4be2_4456 as H;
     lookup[b'N' as usize] = 0;
     lookup
 };
 
-const RC_LOOKUP: [u64; 256] = {
+#[allow(overflowing_literals)]
+const RC_LOOKUP: [H; 256] = {
     let mut lookup = [1; 256];
-    lookup[b'A' as usize] = 0x2955_49f5_4be2_4456;
-    lookup[b'C' as usize] = 0x2032_3ed0_8257_2324;
-    lookup[b'G' as usize] = 0x3193_c185_62a0_2b4c;
-    lookup[b'T' as usize] = 0x3c8b_fbb3_95c6_0474;
+    lookup[b'A' as usize] = 0x2955_49f5_4be2_4456 as H;
+    lookup[b'C' as usize] = 0x2032_3ed0_8257_2324 as H;
+    lookup[b'G' as usize] = 0x3193_c185_62a0_2b4c as H;
+    lookup[b'T' as usize] = 0x3c8b_fbb3_95c6_0474 as H;
     lookup[b'N' as usize] = 0;
     lookup
 };
 
 #[inline(always)]
-fn h(c: u8) -> u64 {
+fn h(c: u8) -> H {
     unsafe{
     let val = H_LOOKUP.get_unchecked(c as usize);
-    // this branch.. is unsatisfactory. but remarkably, having it doesn't seem to make a different in benchs
-    if *val == 1 {
+    // this branch.. is unsatisfactory. but remarkably, having it doesn't seem to make a difference in benchs
+  /*  if *val == 1 {
         panic!("Non-ACGTN nucleotide encountered! {}", c as char)
-    }
+    }*/
     *val
     }
 }
 
 #[inline(always)]
-fn rc(nt: u8) -> u64 {
+fn rc(nt: u8) -> H {
     unsafe{
     let val = RC_LOOKUP.get_unchecked(nt as usize);
-    if *val == 1 {
+/*    if *val == 1 {
         panic!("Non-ACGTN nucleotide encountered! {}", nt as char)
-    }
+    }*/
     *val
     }
 }
@@ -70,18 +74,21 @@ fn rc(nt: u8) -> u64 {
 /// An efficient iterator for returning rev-comp aware hashes in HPC space, keeping only those
 /// below a hash bound. That's a very specialized application, useful for rust-mdbg.
 ///
+/// We use a variable hash type H (default is u64 for classical ntHash, but u32 is also ok and
+/// saves time)
+///
 /// Since it implements the `Iterator` trait it also
 /// exposes many other useful methods. In this example we use `collect` to
-/// generate all hashes and put them in a `Vec<u64>`.
+/// generate all hashes and put them in a `Vec<H>`.
 /// ```
 ///     use rust_seq2kminmers::NtHashHPCIterator;
 ///
 ///     # fn main() {
 ///     let seq = b"ACTGCACATGATGAGTAGATGATGATGATGATGATATGATGATAT";
 ///     let density = 0.1;
-///     let hash_bound = ((density as f64) * (u64::max_value() as f64)) as u64;
+///     let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
 ///     let iter = NtHashHPCIterator::new(seq, 4, hash_bound).unwrap();
-///     let hashes: Vec<(usize,u64)> = iter.collect();
+///     let hashes: Vec<(usize,H)> = iter.collect();
 ///     assert_eq!(hashes,
 ///                vec![(0, 1693589515812555183), (6, 876319423165292601), (13,771890730643629033), (16, 826464090118103095), (33, 1245321008145464903), (34,1193606442387228521)]);
 ///     # }
@@ -91,13 +98,13 @@ fn rc(nt: u8) -> u64 {
 pub struct NtHashHPCIterator<'a> {
     seq: &'a [u8],
     k: usize, // TODO: I wonder what would happen if i set k has a const=32, in terms of performance
-    fh: u64,
-    rh: u64,
+    fh: H,
+    rh: H,
     current_idx_plus_k: usize,
     seq_len: usize,
-    hash_bound: u64,
-    h_buffer: [u64;  BUFLEN],
-    rc_buffer: [u64;  BUFLEN],
+    hash_bound: H,
+    h_buffer: [H;  BUFLEN],
+    rc_buffer: [H;  BUFLEN],
     idx_buffer: [usize;BUFLEN],
     buffer_pos: usize,
     after_first_iter: bool
@@ -105,7 +112,7 @@ pub struct NtHashHPCIterator<'a> {
 
 impl<'a> NtHashHPCIterator<'a> {
     /// Creates a new NtHashHPCIterator with internal state properly initialized.
-    pub fn new(seq: &'a [u8], k: usize, hash_bound: u64) -> Result<NtHashHPCIterator<'a>> {
+    pub fn new(seq: &'a [u8], k: usize, hash_bound: H) -> Result<NtHashHPCIterator<'a>> {
         let seq_len = seq.len();
         if k > seq_len {
             return Err(Error::KSizeOutOfRange {
@@ -124,8 +131,8 @@ impl<'a> NtHashHPCIterator<'a> {
         let mut v;
 
         assert!(k < 256); // who uses large minimizers anyway?
-        let mut h_buffer:   [u64;  BUFLEN]  = [0; BUFLEN];
-        let mut rc_buffer:  [u64;  BUFLEN]  = [0; BUFLEN];
+        let mut h_buffer:   [H;  BUFLEN]  = [0; BUFLEN];
+        let mut rc_buffer:  [H;  BUFLEN]  = [0; BUFLEN];
         let mut idx_buffer: [usize;BUFLEN]  = [0; BUFLEN];
 
         // pre-compute hash of first kmer in HPC space
@@ -184,10 +191,10 @@ impl<'a> NtHashHPCIterator<'a> {
 }
 
 impl<'a> Iterator for NtHashHPCIterator<'a> {
-    type Item = (usize,u64);
+    type Item = (usize,H);
 
 
-    fn next(&mut self) -> Option<(usize,u64)> {
+    fn next(&mut self) -> Option<(usize,H)> {
         unsafe {
             //let k = TEST_CONST_K;
             let k = self.k;
@@ -208,7 +215,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                         ^ rc_seqk.rotate_left(k as u32 - 1);
                 }
 
-                hash = u64::min(self.rh, self.fh);
+                hash = H::min(self.rh, self.fh);
 
                 let prev = self.seq.get_unchecked(self.current_idx_plus_k);
                 prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos,BUFLEN));
@@ -236,7 +243,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = (self.seq_len - self.k + 1) * (((u64::max_value() as f64) / (self.hash_bound as f64)) as u64) as usize; // rough estimation
+        let size_hint = (self.seq_len - self.k + 1) * (((H::max_value() as FH) / (self.hash_bound as FH)) as H) as usize; // rough estimation
         (size_hint, Some(size_hint)) 
     }
 }

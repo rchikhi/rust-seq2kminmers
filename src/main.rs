@@ -1,24 +1,24 @@
 #![feature(bench_black_box)]
 use std::time::Instant;
-use rust_seq2kminmers::{KminmersIterator};
+use rust_seq2kminmers::{KminmersIterator, HashMode};
 use rust_parallelfastx::{parallel_fastx};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    
+    let mode = HashMode::Simd;
+
     // A simple example given just a sequence in a string
     if args.len() < 2
     {
         let seq = b"AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
         println!("Demonstrating how to construct k-min-mers (k=10, l=5, d=0.1) out of a test sequence: {}",std::str::from_utf8(seq).unwrap());
-        let iter = KminmersIterator::new(seq, 10, 5, 0.1, true).unwrap();
+        let iter = KminmersIterator::new(seq, 10, 5, 0.1, mode).unwrap();
         for kminmer in iter
         {
             println!("kminmer: {:?}",kminmer);
         }
     }
-
 
     // A complete example with FASTA parsing
     else
@@ -32,7 +32,7 @@ fn main() {
 
 
         let task = |seq_str: &[u8], _seq_id: &str|  {
-            let iter = KminmersIterator::new(seq_str, k, l, d, true).unwrap();
+            let iter = KminmersIterator::new(seq_str, l, k, d, mode).unwrap();
             //let iter :Vec<u64> = vec![];
             for kminmer in iter
             {
