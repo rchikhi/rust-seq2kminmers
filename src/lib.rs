@@ -29,6 +29,9 @@ pub enum HashMode {
 pub type H  = u64; 
 pub type FH = f64;
 
+//pub type KminmerType = Kminmer; /
+pub type KminmerType = Kminmer;
+
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
 /// Parameters:
@@ -65,7 +68,7 @@ pub struct KminmersIterator<'a> {
     mode: HashMode,
     nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
-    nthash_simd_iterator: Option<NtHashSIMDIterator>,
+    nthash_simd_iterator: Option<NtHashSIMDIterator<'a>>,
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<H>,
     curr_pos : Vec::<usize>,
@@ -95,9 +98,9 @@ impl<'a> KminmersIterator<'a> {
                 nthash_iterator = Some(NtHashIterator::new(seq, l).unwrap());
             }
         }
-
-        let curr_sk = Vec::<H>::new();
-        let curr_pos = Vec::<usize>::new();
+        
+        let curr_sk  = Vec::<H>    ::with_capacity((seq.len() as f64 * density) as usize);
+        let curr_pos = Vec::<usize>::with_capacity((seq.len() as f64 * density) as usize);
 
         Ok(KminmersIterator {
             seq_pos: 0,
@@ -117,9 +120,9 @@ impl<'a> KminmersIterator<'a> {
 }
 
 impl<'a> Iterator for KminmersIterator<'a> {
-    type Item = Kminmer;
+    type Item = KminmerType;
 
-    fn next(&mut self) -> Option<Kminmer> {
+    fn next(&mut self) -> Option<KminmerType> {
         let kminmer;
         loop
         {
@@ -165,7 +168,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() >= self.k { 
-                kminmer = Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count);
+                kminmer = KminmerType::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count);
                 self.count += 1;
                 break; 
             }
@@ -175,119 +178,3 @@ impl<'a> Iterator for KminmersIterator<'a> {
 }
 
 
-pub struct KminmersHashIterator<'a> {
-    seq_pos : usize, 
-    k: usize,
-    l: usize,
-    hash_bound: H,
-    mode: HashMode,
-    nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
-    nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
-    nthash_simd_iterator: Option<NtHashSIMDIterator>,
-    nthash_iterator: Option<NtHashIterator<'a>>,
-    curr_sk : Vec::<H>,
-    curr_pos : Vec::<usize>,
-    count : usize,
-}
-
-impl<'a> KminmersHashIterator<'a> {
-    pub fn new(seq: &'a [u8], l: usize, k: usize, density: f64, mode: HashMode) -> Result<KminmersHashIterator<'a>> {
-
-        let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
-
-        let mut nthash_hpc_simd_iterator : Option<NtHashHPCSIMDIterator> = None;
-        let mut nthash_hpc_iterator = None;
-        let mut nthash_simd_iterator = None;
-        let mut nthash_iterator = None;
-        if seq.len() > l {
-            if mode == HashMode::HpcSimd
-            {
-                nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound));
-            }
-            else if mode == HashMode::Simd
-            {
-                nthash_simd_iterator = Some(NtHashSIMDIterator::new(seq, l, hash_bound));
-            }
-            else if mode == HashMode::Hpc
-            {
-                nthash_hpc_iterator = Some(NtHashHPCIterator::new(seq, l, hash_bound).unwrap());
-            }
-            else 
-            { 
-                nthash_iterator = Some(NtHashIterator::new(seq, l).unwrap());
-            }
-        }
-
-        let curr_sk = Vec::<H>::new();
-        let curr_pos = Vec::<usize>::new();
-
-        Ok(KminmersHashIterator {
-            seq_pos: 0,
-            k,
-            l,
-            hash_bound,
-            mode,
-            nthash_hpc_simd_iterator,
-            nthash_hpc_iterator,
-            nthash_simd_iterator,
-            nthash_iterator,
-            curr_pos,
-            curr_sk,
-            count : 0
-        })
-    }
-}
-
-impl<'a> Iterator for KminmersHashIterator<'a> {
-    type Item = KminmerHash;
-
-    fn next(&mut self) -> Option<KminmerHash> {
-        let kminmer;
-        loop
-        {
-            let mut j;
-            let mut hash;
-            if self.mode == HashMode::HpcSimd
-            {
-                match self.nthash_hpc_simd_iterator.as_mut().unwrap().next()
-                {
-                    Some(n) => { (j,hash) = n; } 
-                    None => return None
-                };
-            }
-            else if self.mode == HashMode::Hpc
-            {
-                match self.nthash_hpc_iterator.as_mut().unwrap().next()
-                {
-                    Some(n) => { (j,hash) = n; } 
-                    None => return None
-                };
-            }
-            else 
-            {
-                loop
-                {
-                    match self.nthash_iterator.as_mut().unwrap().next()
-                    {
-                        Some(x) => { hash = x as H;}
-                        None => return None
-                    };
-                    self.seq_pos += 1;
-                    j = self.seq_pos;
-                    if hash < self.hash_bound { break; }
-                }
-            }
-
-            self.curr_pos.push(j); // raw sequence position
-            self.curr_sk.push(hash);
-            if self.curr_sk.len() == self.k { 
-                kminmer = KminmerHash::new(&self.curr_sk, self.curr_pos[0], self.curr_pos[self.k - 1] + self.l - 1, self.count);
-                self.curr_sk = self.curr_sk[1..self.k].to_vec(); // TODO get rid of those lines as above
-                self.curr_pos = self.curr_pos[1..self.k].to_vec();
-                self.count += 1;
-                break; 
-            }
-        }
-        Some(kminmer)
-    }
-}

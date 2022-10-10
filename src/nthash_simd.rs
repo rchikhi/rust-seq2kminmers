@@ -9,49 +9,149 @@ use crate::{H, FH}; // hash precision
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct NtHashSIMDIterator {
-    items: Vec<(usize,H)>,
-    pos: usize,
+pub struct NtHashSIMDIterator<'a> {
+    string :&'a [u8],
+    _positions :__m512i,
+    _hVal :__m512i,
+    _fhVal :__m512i,
+    _rhVal :__m512i,
+    hashes_ptr :*mut u32,
+    pos_ptr :*mut u32,
+    pos_in_hash :usize,
+    nb_ones :usize,
+    hash_bound :u32,
+    length: usize,
+    i: usize,
+    k: usize,
 }
 
 
-impl NtHashSIMDIterator {
+impl<'a> NtHashSIMDIterator<'a> {
     /// Creates a new NtHashSIMDIterator with internal state properly initialized.
-    pub fn new(seq: &[u8], k: usize, hash_bound: H) -> NtHashSIMDIterator{
-        let _seq_len = seq.len();
+    pub fn new(seq: &'a [u8], k: usize, hash_bound: H) -> NtHashSIMDIterator<'a>{
+        unsafe {
+        let length = seq.len();
+        let debug = false;
+        // maybe need to pad seq so that it's a multiple of 16 nucleotides. let's see.
 
-        let items = nthash_simd_32bits(seq, k, hash_bound);
+        let hashes_layout = alloc::Layout::from_size_align_unchecked(32*16, 8);
+        let hashes_ptr = alloc::alloc(hashes_layout) as *mut u32;
+        let pos_layout = alloc::Layout::from_size_align_unchecked(32*16, 8);
+        let pos_ptr = alloc::alloc(pos_layout) as *mut u32;
+
+        let mut _positions = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+        let mut _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+
+        let _k = _mm512_set1_epi32((31 - (k % 31)) as i32);
+        let density = (hash_bound as FH) /(H::max_value() as FH); 
+        let hash_bound = ((density as f32) * (u32::max_value() as f32)) as u32;
+        let _hashBound = _mm512_set1_epi32(hash_bound as i32);
+
+        let (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_initial(seq, k, _k);
+
+        let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
+        let nb_ones = mask.count_ones() as usize;
+        _mm512_mask_compressstoreu_epi32(hashes_ptr as *mut u8, mask, _hVal);
+        _mm512_mask_compressstoreu_epi32(pos_ptr as *mut u8, mask, _positions);
+        _positions = _mm512_add_epi32(_positions, _16);
 
         NtHashSIMDIterator {
-            items,
-            pos: 0,
+            string :seq,
+            _positions,
+            _hVal,
+            _fhVal,
+            _rhVal,
+            hashes_ptr,
+            pos_ptr,
+            nb_ones,
+            pos_in_hash: 0,
+            hash_bound,
+            length,
+            i: 16,
+            k,
         }
+    }
     }
 }
 
-impl Iterator for NtHashSIMDIterator {
+
+impl<'a> Iterator for NtHashSIMDIterator<'a> {
     type Item = (usize,H);
 
     fn next(&mut self) -> Option<(usize,H)> {
-         let res;
-         if self.pos < self.items.len()
-         {
-             res = Some(self.items[self.pos]);
-             self.pos += 1;
-         }
-         else {
-             res = None;
-         }
-         res
+        unsafe {
+
+        let res;
+
+        if self.pos_in_hash < self.nb_ones 
+        {
+            res = Some((std::slice::from_raw_parts(self.pos_ptr,    16*32)[self.pos_in_hash] as usize, 
+                        std::slice::from_raw_parts(self.hashes_ptr, 16*32)[self.pos_in_hash] as H));
+            self.pos_in_hash += 1;
+
+        }
+        else
+        {
+            let sentinel = self.length - self.k + 1;
+            let _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+            let _k = _mm512_set1_epi32((31 - (self.k % 31)) as i32);
+            let _hashBound = _mm512_set1_epi32(self.hash_bound as i32);
+            let mut _hVal = self._hVal;
+            let mut _fhVal = self._fhVal;
+            let mut _rhVal = self._rhVal;
+            let mut _positions = self._positions;
+
+            loop
+            {
+                if self.i >= sentinel
+                {
+                    res = None;
+                    break;
+                }
+
+                (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(self.string, self.i-1+self.k, self.i-1, _k, _fhVal, _rhVal);
+                self.i += 16;
+
+                let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
+                let nb_ones = mask.count_ones();
+                if nb_ones > 0
+                {
+                    _mm512_mask_compressstoreu_epi32(self.hashes_ptr  as *mut u8, mask, _hVal);
+                    _mm512_mask_compressstoreu_epi32(self.pos_ptr  as *mut u8, mask, _positions);                
+                }
+                _positions = _mm512_add_epi32(_positions, _16);
+                if nb_ones > 0
+                {
+                    res = Some((std::slice::from_raw_parts(self.pos_ptr,    16*32)[0] as usize, 
+                                std::slice::from_raw_parts(self.hashes_ptr, 16*32)[0] as H));
+                    self.pos_in_hash = 1;
+                    self.nb_ones = nb_ones as usize;
+                    break;
+                }
+
+            }
+            if res != None
+            {
+                self._hVal = _hVal;
+                self._fhVal = _fhVal;
+                self._rhVal = _rhVal;
+                self._positions = _positions;
+            }
+        }
+
+        res
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = self.items.len();
+        let size_hint = (self.length as FH * (self.hash_bound as FH) /(H::max_value() as FH)) as usize;
         (size_hint, Some(size_hint)) 
     }
 }
 
 
+// -------- follows ntHash-AVX2, this is the AVX512 32bit hashes version
+//
 
 // convert kmers 8 -> 3 bit representation, N character is mapped to 4
 //
@@ -368,58 +468,11 @@ unsafe fn _mm512_NTC_epu32_sliding(kmerSeq: &[u8], offsetOut: usize, offsetIn: u
 }
 
 
-// follows ntHash-AVX2, this is the AVX512 32bit hashes version
-pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
-{
-    unsafe { 
-    let debug = false;
-    let length = n.len();
-    // maybe need to pad n
-    let hashes_layout = alloc::Layout::from_size_align_unchecked(length*32, 8);
-    let hashes_ptr = alloc::alloc(hashes_layout) as *mut u32;
-    let pos_layout = alloc::Layout::from_size_align_unchecked(length*64, 8);
-    let pos_ptr = alloc::alloc(pos_layout) as *mut u32;
-    let mut hashes_offset :u32 = 0;
-    
-        let _zero = _mm512_setzero_si512();
-        //let mut _pos = _mm512_set_epi32(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        let mut _pos = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-        let mut _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
-
-        let _k = _mm512_set1_epi32((31 - (k % 31)) as i32);
-        let density = (hash_bound as FH) /(H::max_value() as FH); 
-        let hash_bound = ((density as f32) * (u32::max_value() as f32)) as u32;
-        let _hashBound = _mm512_set1_epi32(hash_bound as i32);
-
-        let (mut _hVal, mut _fhVal, mut _rhVal) = _mm512_NTC_epu32_initial(n, k, _k);
-        
-        let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
-        _mm512_mask_compressstoreu_epi32(hashes_ptr.offset(hashes_offset as isize) as *mut u8, mask, _hVal);
-        _mm512_mask_compressstoreu_epi32(pos_ptr.offset(hashes_offset as isize) as *mut u8, mask, _pos);
-        let nb_ones = mask.count_ones();
-        hashes_offset += nb_ones;
-        _pos = _mm512_add_epi32(_pos, _16);
-
-         /*let mut lo= _mm512_extracti64x4_epi64(_hVal, 0);
+        /*let mut lo= _mm512_extracti64x4_epi64(_hVal, 0);
         let mut hval0 = _mm256_extract_epi32(lo, 0);
         if debug { println!("first hash AVX512x32 {:x}", hval0); }
         */
 
-        let sentinel = length - k + 1;
-        let mut i = 16;
-        while i < sentinel
-        {
-            (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(n, i-1+k, i-1, _k, _fhVal, _rhVal);
-
-            let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
-            _mm512_mask_compressstoreu_epi32(hashes_ptr.offset(hashes_offset as isize) as *mut u8, mask, _hVal);
-            _mm512_mask_compressstoreu_epi32(pos_ptr.offset(hashes_offset as isize) as *mut u8, mask, _pos);
-            let nb_ones = mask.count_ones();
-            hashes_offset += nb_ones;
-
-            _pos = _mm512_add_epi32(_pos, _16);
-            i += 16;
-        }
 
 	/*if (length - k) % 16 < 8{
 	    lo = _mm512_extracti64x4_epi64(_hVal, 0); }
@@ -443,14 +496,4 @@ pub fn nthash_simd_32bits(n: &[u8], k: usize, hash_bound: H) -> Vec<(usize,H)>
 	    hval0 = _mm256_extract_epi32(lo, 7); }
         if debug { println!("final hash AVX512x32 {:x}", hval0); }
         */
-
-
-    let vec_hashes : Vec<u32> = Vec::from_raw_parts(hashes_ptr as *mut u32, hashes_offset as usize, hashes_offset as usize);
-    let vec_pos : Vec<u32> = Vec::from_raw_parts(pos_ptr as *mut u32, hashes_offset as usize, hashes_offset as usize);
-   
-    //println!("vec hashes {:?}",vec_hashes);
-    //println!("vec pos {:?}",vec_pos);
-    vec_pos.iter().map(|&p| p as usize).zip(vec_hashes.iter().map(|&p| p as u64)).collect()
-    }
-}
  
