@@ -31,7 +31,6 @@ impl<'a> NtHashSIMDIterator<'a> {
     pub fn new(seq: &'a [u8], k: usize, hash_bound: H) -> NtHashSIMDIterator<'a>{
         unsafe {
         let length = seq.len();
-        let debug = false;
         // maybe need to pad seq so that it's a multiple of 16 nucleotides. let's see.
 
         let hashes_layout = alloc::Layout::from_size_align_unchecked(32*16, 8);
@@ -88,7 +87,6 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             res = Some((std::slice::from_raw_parts(self.pos_ptr,    16*32)[self.pos_in_hash] as usize, 
                         std::slice::from_raw_parts(self.hashes_ptr, 16*32)[self.pos_in_hash] as H));
             self.pos_in_hash += 1;
-
         }
         else
         {
@@ -100,17 +98,20 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             let mut _fhVal = self._fhVal;
             let mut _rhVal = self._rhVal;
             let mut _positions = self._positions;
+            let mut i = self.i;
+            let k = self.k;
+            let string = self.string;
 
             loop
             {
-                if self.i >= sentinel
+                if i >= sentinel
                 {
                     res = None;
                     break;
                 }
 
-                (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(self.string, self.i-1+self.k, self.i-1, _k, _fhVal, _rhVal);
-                self.i += 16;
+                (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(string, i-1+k, i-1, _k, _fhVal, _rhVal);
+                i += 16;
 
                 let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
                 let nb_ones = mask.count_ones();
@@ -136,6 +137,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                 self._fhVal = _fhVal;
                 self._rhVal = _rhVal;
                 self._positions = _positions;
+                self.i = i;
             }
         }
 

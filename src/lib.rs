@@ -2,7 +2,7 @@
 #![feature(core_intrinsics)]
 use nthash::NtHashIterator;
 mod kminmer;
-pub use kminmer::{Kminmer, KminmerHash};
+pub use kminmer::{Kminmer, KminmerVec, KminmerHash};
 mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
 mod nthash_simd;
@@ -28,9 +28,6 @@ pub enum HashMode {
 //pub type FH = f32;
 pub type H  = u64; 
 pub type FH = f64;
-
-//pub type KminmerType = Kminmer; /
-pub type KminmerType = Kminmer;
 
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
@@ -74,6 +71,7 @@ pub struct KminmersIterator<'a> {
     curr_pos : Vec::<usize>,
     count : usize,
 }
+
 
 impl<'a> KminmersIterator<'a> {
     pub fn new(seq: &'a [u8], l: usize, k: usize, density: FH, mode: HashMode) -> Result<KminmersIterator<'a>> {
@@ -120,10 +118,9 @@ impl<'a> KminmersIterator<'a> {
 }
 
 impl<'a> Iterator for KminmersIterator<'a> {
-    type Item = KminmerType;
-
-    fn next(&mut self) -> Option<KminmerType> {
-        let kminmer;
+    type Item = KminmerVec;
+    fn next(&mut self) -> Option<KminmerVec> {
+        let res;
         loop
         {
             let mut j;
@@ -168,12 +165,13 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() >= self.k { 
-                kminmer = KminmerType::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count);
+                res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count));
+                //res= Some(Kminmer::new(&self.curr_sk[0..0], 0,0,0));
                 self.count += 1;
                 break; 
             }
         }
-        Some(kminmer)
+        res
     }
 }
 
