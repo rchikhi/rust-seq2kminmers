@@ -142,7 +142,7 @@ impl KminmerHash {
             rev = false;
         }
         KminmerHash {
-            hash: hash32(mers),
+            hash: hash32(&mers),
             start,
             end,
             offset,
