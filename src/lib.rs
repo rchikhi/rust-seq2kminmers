@@ -69,6 +69,8 @@ pub struct KminmersIterator<'a> {
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<H>,
     curr_pos : Vec::<usize>,
+    kminmer_fhash: H,
+    kminmer_rhash: H,
     count : usize,
 }
 
@@ -112,14 +114,18 @@ impl<'a> KminmersIterator<'a> {
             nthash_iterator,
             curr_pos,
             curr_sk,
+            kminmer_fhash: 0,
+            kminmer_rhash: 0,
             count : 0
         })
     }
 }
 
+pub type KminmerType = KminmerHash;
+
 impl<'a> Iterator for KminmersIterator<'a> {
-    type Item = KminmerVec;
-    fn next(&mut self) -> Option<KminmerVec> {
+    type Item = KminmerType;
+    fn next(&mut self) -> Option<KminmerType> {
         let res;
         loop
         {
@@ -165,10 +171,19 @@ impl<'a> Iterator for KminmersIterator<'a> {
             self.curr_pos.push(j); // raw sequence position
             self.curr_sk.push(hash);
             if self.curr_sk.len() >= self.k { 
-                res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count));
+                self.kminmer_fhash ^= self.kminmer_fhash.rotate_left(1) ^ (hash as H).rotate_left(self.k as u32) ^ (self.curr_pos[self.count] as H);
+                self.kminmer_rhash ^= self.kminmer_rhash.rotate_right(1) ^ (hash as H) .rotate_right(1) ^ (self.curr_pos[self.count] as H).rotate_left((self.k-1) as u32);
+                let hash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as u32;
+                //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count));
+                res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], self.curr_pos[self.count+self.k - 1] + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
                 //res= Some(Kminmer::new(&self.curr_sk[0..0], 0,0,0));
                 self.count += 1;
                 break; 
+            }
+            else
+            {
+                self.kminmer_fhash ^= (hash as H).rotate_left((self.k-self.curr_sk.len() + 1) as u32);
+                self.kminmer_rhash ^= (hash as H).rotate_left(self.curr_sk.len() as u32)
             }
         }
         res

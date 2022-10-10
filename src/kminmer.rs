@@ -163,6 +163,19 @@ impl Kminmer for  KminmerHash {
     }
 }
 
+impl KminmerHash {
+    // Create a new Kminmer object.
+    pub fn new_from_hash(hash :u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
+        KminmerHash {
+            hash,
+            start,
+            end,
+            offset,
+            rev,
+        }    
+    }
+}
+
 // Various impls for Kminmer.
 impl PartialEq for KminmerHash {
     fn eq(&self, other: &Self) -> bool {

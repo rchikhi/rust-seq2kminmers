@@ -12,7 +12,7 @@ use rand::distributions::{Distribution, Uniform};
 
 use nthash::{nthash, NtHashIterator};
 #[allow(unused_imports)]
-use rust_seq2kminmers::{KminmersIterator, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, nthash_c, HashMode};
+use rust_seq2kminmers::{KminmersIterator, KminmerType, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, nthash_c, HashMode};
 
 fn nthash_bench(c: &mut Criterion) {
     let range = Uniform::from(0..4);
@@ -78,7 +78,7 @@ fn nthash_bench(c: &mut Criterion) {
 
     group.bench_with_input(BenchmarkId::new("kminmers_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
         let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Simd).unwrap();
-        let _res = iter.collect::<Vec<KminmerVec>>();
+        let _res = iter.collect::<Vec<KminmerType>>();
     })});
 
 
@@ -86,14 +86,14 @@ fn nthash_bench(c: &mut Criterion) {
     |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Regular).unwrap();
-            let _res = iter.collect::<Vec<KminmerVec>>();
+            let _res = iter.collect::<Vec<KminmerType>>();
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_hpc", seq_len), &seq,
     |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Hpc).unwrap();
-            let _res = iter.collect::<Vec<KminmerVec>>();
+            let _res = iter.collect::<Vec<KminmerType>>();
         })});
 
     // The following bench requires to have compiled ntHash-C (https://github.com/rchikhi/ntHash-C)

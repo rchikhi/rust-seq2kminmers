@@ -129,6 +129,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                     self.nb_ones = nb_ones as usize;
                     break;
                 }
+                
 
             }
             if res != None
