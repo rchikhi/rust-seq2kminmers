@@ -184,9 +184,9 @@ impl<'a> Iterator for KminmersIterator<'a> {
                     self.kminmer_rhash ^= self.kminmer_rhash.rotate_right(1) ^ (hash as H).rotate_left((self.k-1) as u32)  ^ (self.curr_sk[self.count-1] as H).rotate_right(1);
                 }
                 let hash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as u32;
-                //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
+                res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
                 //res = Some(Kminmer::new(&self.curr_sk[0..0], 0, 0,0));
-                res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], j + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
+                //res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], j + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
                 self.count += 1;
                 break; 
             }
