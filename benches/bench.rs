@@ -12,7 +12,7 @@ use rand::distributions::{Distribution, Uniform};
 
 use nthash::{nthash, NtHashIterator};
 #[allow(unused_imports)]
-use rust_seq2kminmers::{KminmersIterator,Kminmer, NtHashHPCIterator, nthash_c, HashMode};
+use rust_seq2kminmers::{KminmersIterator, KminmerType, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, nthash_c, HashMode};
 
 fn nthash_bench(c: &mut Criterion) {
     let range = Uniform::from(0..4);
@@ -31,59 +31,69 @@ fn nthash_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("BenchmarkGroup");
     group.throughput(Throughput::Bytes(seq.len() as u64));
 
-/*    group.bench_with_input(BenchmarkId::new("encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let hpc_str = rust_seq2kminmers::encode_rle(i);
-        })});*/
+    /*    group.bench_with_input(BenchmarkId::new("encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+          let hpc_str = rust_seq2kminmers::encode_rle(i);
+          })});*/
 
-      group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let _hpc_str = rust_seq2kminmers::hpc(i);
+    group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+        let _hpc_str = rust_seq2kminmers::hpc(i);
+    })});
+
+    group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+        let _hpc_str = rust_seq2kminmers::encode_rle_simd(i);
+    })});
+
+    group.bench_with_input(BenchmarkId::new("nthash", seq_len), &seq,
+    |b: &mut Bencher, i: &String| {
+        b.iter(|| {
+            nthash(i.as_bytes(), 5);
         })});
 
-      group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let _hpc_str = rust_seq2kminmers::encode_rle_simd(i);
-        })});
-
-    group.bench_with_input(BenchmarkId::new("nthash_orig_iterator", seq_len), &seq,
-            |b: &mut Bencher, i: &String| {
+    group.bench_with_input(BenchmarkId::new("nthashiterator_luiz", seq_len), &seq,
+    |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = NtHashIterator::new(i.as_bytes(), 5).unwrap();
             //  iter.for_each(drop);
             let _res = iter.collect::<Vec<u64>>(); // original nthash iterator only has 64 bits
         })});
 
-    group.bench_with_input(BenchmarkId::new("nthash_orig_simple", seq_len), &seq,
-        |b: &mut Bencher, i: &String| {
-        b.iter(|| {
-            nthash(i.as_bytes(), 5);
-        })});
 
-    group.bench_with_input(BenchmarkId::new("nthash_new_iterator_hpc", seq_len), &seq,
-        |b: &mut Bencher, i: &String| {
+    group.bench_with_input(BenchmarkId::new("nthashiterator_hpc", seq_len), &seq,
+    |b: &mut Bencher, i: &String| {
         b.iter(|| {
-            let density : f64 = 1.0;
+            let density : f64 = 0.01;
             let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
             let iter = NtHashHPCIterator::new(i.as_bytes(), 5, hash_bound).unwrap();
             let _res = iter.collect::<Vec<(usize, H)>>();
         })});
 
-      group.bench_with_input(BenchmarkId::new("kminmers_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-            let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Simd).unwrap();
-            let _res = iter.collect::<Vec<Kminmer>>();
+    group.bench_with_input(BenchmarkId::new("nthashiterator_simd", seq_len), &seq,
+    |b: &mut Bencher, i: &String| {
+        b.iter(|| {
+            let density : f64 = 0.01;
+            let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
+            let iter = NtHashSIMDIterator::new(i.as_bytes(), 5, hash_bound);
+            let _res = iter.collect::<Vec<(usize, H)>>();
         })});
+
+    group.bench_with_input(BenchmarkId::new("kminmers_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+        let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Simd).unwrap();
+        let _res = iter.collect::<Vec<KminmerType>>();
+    })});
 
 
     group.bench_with_input(BenchmarkId::new("kminmers", seq_len), &seq,
-        |b: &mut Bencher, i: &String| {
+    |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Regular).unwrap();
-            let _res = iter.collect::<Vec<Kminmer>>();
+            let _res = iter.collect::<Vec<KminmerType>>();
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_hpc", seq_len), &seq,
-        |b: &mut Bencher, i: &String| {
+    |b: &mut Bencher, i: &String| {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Hpc).unwrap();
-            let _res = iter.collect::<Vec<Kminmer>>();
+            let _res = iter.collect::<Vec<KminmerType>>();
         })});
 
     // The following bench requires to have compiled ntHash-C (https://github.com/rchikhi/ntHash-C)

@@ -9,8 +9,13 @@ use fxhash::{hash, hash32, hash64};
 
 use crate::H;
 
+pub trait Kminmer {
+    fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self;
+    fn get_hash(&self) -> u64;
+}
+
 #[derive(Clone, Debug)]
-pub struct Kminmer {
+pub struct KminmerVec {
     mers: Vec<H>, // Raw Vec of minimizer hashes
     pub start: usize, // Start location
     pub end: usize, // End location
@@ -19,10 +24,10 @@ pub struct Kminmer {
 }
 
 
-impl Kminmer {
+impl Kminmer for KminmerVec {
     // Create a new Kminmer object.
-    pub fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
-        let mut obj = Kminmer {
+    fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
+        let mut obj = KminmerVec {
             mers: Vec::from(mers),
             start,
             end,
@@ -32,6 +37,17 @@ impl Kminmer {
         obj.normalize();
         obj     
     }
+    
+    // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
+    fn get_hash(&self) -> u64 {
+        let mut hash = DefaultHasher::new();
+        self.mers.hash(&mut hash);
+        hash.finish()
+    }
+
+}
+
+impl KminmerVec {
     
     // Transform into canonical Kminmer for this object.
     pub fn normalize(&mut self) {
@@ -65,13 +81,6 @@ impl Kminmer {
         self.mers.to_vec()
     }
 
-    // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
-    pub fn get_hash(&self) -> u64 {
-        let mut hash = DefaultHasher::new();
-        self.mers.hash(&mut hash);
-        hash.finish()
-    }
-
     pub fn get_hash_usize(&self) -> usize {
         hash(&self.mers)
     }
@@ -84,32 +93,32 @@ impl Kminmer {
 }
 
 // Various impls for Kminmer.
-impl PartialEq for Kminmer {
-    fn eq(&self, other: &Kminmer) -> bool {
+impl PartialEq for KminmerVec {
+    fn eq(&self, other: &KminmerVec) -> bool {
         self.mers == other.mers
     }
 }
 
-impl Eq for Kminmer {
+impl Eq for KminmerVec {
 }
 
-impl Hash for Kminmer {
+impl Hash for KminmerVec {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.mers.hash(state);
     }
 }
 
-impl Default for Kminmer {
-    fn default() -> Self{Kminmer{mers: vec![], start: 0, end: 0, offset: 0, rev: false}}
+impl Default for KminmerVec {
+    fn default() -> Self{KminmerVec{mers: vec![], start: 0, end: 0, offset: 0, rev: false}}
 }
 
-impl Ord for Kminmer {
+impl Ord for KminmerVec {
     fn cmp(&self, other: &Self) -> Ordering {
         self.mers.cmp(&other.mers)
     }
 }
 
-impl PartialOrd for Kminmer{
+impl PartialOrd for KminmerVec{
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -125,9 +134,9 @@ pub struct KminmerHash {
 }
 
 
-impl KminmerHash {
+impl Kminmer for  KminmerHash {
     // Create a new Kminmer object.
-    pub fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
+    fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
         let hash;
         let rev;
         let mut rev_mers = mers.to_vec();
@@ -149,8 +158,21 @@ impl KminmerHash {
             rev,
         }    
     }
-    pub fn get_hash(&self) -> u32 {
-        self.hash
+    fn get_hash(&self) -> u64 {
+        self.hash as u64
+    }
+}
+
+impl KminmerHash {
+    // Create a new Kminmer object.
+    pub fn new_from_hash(hash :u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
+        KminmerHash {
+            hash,
+            start,
+            end,
+            offset,
+            rev,
+        }    
     }
 
     pub fn new_with_hash(hash: u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
