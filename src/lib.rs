@@ -176,7 +176,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 if self.curr_sk.len() == self.k
                 {
                     self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
-                    self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1)          as u32);
+                    self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1) as u32);
                 }
                 else
                 {

@@ -34,13 +34,17 @@ fn main() {
         let task = |seq_str: &[u8], _seq_id: &str|  {
             let iter = KminmersIterator::new(seq_str, l, k, d, mode).unwrap();
             //let iter :Vec<u64> = vec![];
+            let mut _count = 0;
             for kminmer in iter
             {
-                //println!("seq_id {} kminmer: {:?}",seq_id,kminmer);
-                
+                //println!("seq_id {} kminmer: {:?}",_seq_id,kminmer);
                 // prevent from being optimized away
                 std::hint::black_box(&kminmer);
+                //
+                _count += 1;
             }
+            println!("seq_id {} nb kminmers: {}",_seq_id,_count);
+
         };
 
         let start = Instant::now();

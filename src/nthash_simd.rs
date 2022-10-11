@@ -44,11 +44,11 @@ impl<'a> NtHashSIMDIterator<'a> {
         let _k = _mm512_set1_epi32((31 - (k % 31)) as i32);
         let density = (hash_bound as FH) /(H::max_value() as FH); 
         let hash_bound = ((density as f32) * (u32::max_value() as f32)) as u32;
-        let _hashBound = _mm512_set1_epi32(hash_bound as i32);
+        let _hashBound = _mm512_set1_epi32((hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
 
         let (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_initial(seq, k, _k);
 
-        let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
+        let mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
         let nb_ones = mask.count_ones() as usize;
         _mm512_mask_compressstoreu_epi32(hashes_ptr as *mut u8, mask, _hVal);
         _mm512_mask_compressstoreu_epi32(pos_ptr as *mut u8, mask, _positions);
@@ -93,7 +93,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             let sentinel = self.length - self.k + 1;
             let _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
             let _k = _mm512_set1_epi32((31 - (self.k % 31)) as i32);
-            let _hashBound = _mm512_set1_epi32(self.hash_bound as i32);
+            let _hashBound = _mm512_set1_epi32((self.hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
             let mut _hVal = self._hVal;
             let mut _fhVal = self._fhVal;
             let mut _rhVal = self._rhVal;
@@ -113,7 +113,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                 (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(string, i-1+k, i-1, _k, _fhVal, _rhVal);
                 i += 16;
 
-                let mask = _mm512_cmp_epi32_mask(_hVal, _hashBound, 1 /*LT*/);
+                let mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
                 let nb_ones = mask.count_ones();
                 if nb_ones > 0
                 {
