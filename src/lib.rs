@@ -29,6 +29,8 @@ pub enum HashMode {
 pub type H  = u64; 
 pub type FH = f64;
 
+pub type KminmerType = KminmerHash;
+
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
 /// Parameters:
@@ -121,8 +123,6 @@ impl<'a> KminmersIterator<'a> {
     }
 }
 
-pub type KminmerType = KminmerHash;
-
 impl<'a> Iterator for KminmersIterator<'a> {
     type Item = KminmerType;
     fn next(&mut self) -> Option<KminmerType> {
@@ -175,24 +175,28 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 //assert!(self.curr_pos[self.count+self.k - 1] == j); // same
                 if self.curr_sk.len() == self.k
                 {
-                    self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()-1) as u32);
+                    self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
                     self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1)          as u32);
                 }
                 else
                 {
-                    self.kminmer_fhash ^= self.kminmer_fhash.rotate_left(1)  ^ (hash as H)                                 ^ (self.curr_sk[self.count-1] as H).rotate_left(self.k as u32);
-                    self.kminmer_rhash ^= self.kminmer_rhash.rotate_right(1) ^ (hash as H).rotate_left((self.k-1) as u32)  ^ (self.curr_sk[self.count-1] as H).rotate_right(1);
+                    self.kminmer_fhash = self.kminmer_fhash.rotate_left(1)  ^ (hash as H)
+                        ^ (self.curr_sk[self.count-1] as H).rotate_left(self.k as u32);
+                    self.kminmer_rhash = self.kminmer_rhash.rotate_right(1) ^ (hash as H).rotate_left((self.k-1) as u32)  
+                        ^ (self.curr_sk[self.count-1] as H).rotate_right(1);
                 }
-                let hash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as u32;
-                res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
+                let nthash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as H;
+                let rev = self.kminmer_rhash < self.kminmer_fhash;
+                //let (hash,rev) = nthash1_minimizer_space(&self.curr_sk[self.count..self.count+self.k]);
+                //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
                 //res = Some(Kminmer::new(&self.curr_sk[0..0], 0, 0,0));
-                //res = Some(KminmerHash::new_from_hash(hash, self.curr_pos[self.count], j + self.l - 1, self.count, self.kminmer_rhash < self.kminmer_fhash));
+                res = Some(KminmerHash::new_from_hash(nthash, self.curr_pos[self.count], j + self.l - 1, self.count, rev));
                 self.count += 1;
                 break; 
             }
             else
             {
-                self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-self.curr_sk.len()-1) as u32);
+                self.kminmer_fhash ^= (hash as H).rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
                 self.kminmer_rhash ^= (hash as H).rotate_left((self.curr_sk.len()-1) as u32);
             }
         }
@@ -201,3 +205,19 @@ impl<'a> Iterator for KminmersIterator<'a> {
 }
 
 
+// a test implementation to hash just a single k-min-mer, hence it is non-rolling 
+#[allow(dead_code)]
+fn nthash1_minimizer_space(kminmer: &[H]) -> (H, bool)
+{
+    let mut kminmer_fhash :H= 0;
+    let mut kminmer_rhash :H= 0;
+    let k = kminmer.len();
+    for (i,hash) in kminmer.iter().enumerate()
+    {
+        kminmer_fhash ^= (*hash).rotate_left((k-1-i) as u32);
+        kminmer_rhash ^= (*hash).rotate_left(i     as u32);
+    }
+    let hash = if kminmer_fhash < kminmer_rhash { kminmer_fhash } else { kminmer_rhash } as H;
+    let rev = kminmer_rhash < kminmer_fhash;
+    (hash, rev)
+}
