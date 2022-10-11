@@ -11,7 +11,7 @@ use crate::H;
 
 pub trait Kminmer {
     fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self;
-    fn get_hash(&self) -> u64;
+    fn get_hash(&self) -> H;
 }
 
 #[derive(Clone, Debug)]
@@ -39,10 +39,10 @@ impl Kminmer for KminmerVec {
     }
     
     // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
-    fn get_hash(&self) -> u64 {
+    fn get_hash(&self) -> H {
         let mut hash = DefaultHasher::new();
         self.mers.hash(&mut hash);
-        hash.finish()
+        hash.finish() as H
     }
 
 }
@@ -196,7 +196,7 @@ impl Ord for KminmerHash {
     }
 }
 
-impl PartialOrd for KminmerHash{
+impl PartialOrd for KminmerHash {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }

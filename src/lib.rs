@@ -101,8 +101,8 @@ impl<'a> KminmersIterator<'a> {
             }
         }
         
-        let curr_sk  = Vec::<H>    ::with_capacity((seq.len() as f64 * density) as usize);
-        let curr_pos = Vec::<usize>::with_capacity((seq.len() as f64 * density) as usize);
+        let curr_sk  = Vec::<H>    ::with_capacity((seq.len() as FH * density) as usize);
+        let curr_pos = Vec::<usize>::with_capacity((seq.len() as FH * density) as usize);
 
         Ok(KminmersIterator {
             seq_pos: 0,
