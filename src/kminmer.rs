@@ -174,16 +174,6 @@ impl KminmerHash {
             rev,
         }    
     }
-
-    pub fn new_with_hash(hash: u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
-        KminmerHash {
-            hash,
-            start,
-            end,
-            offset,
-            rev,
-        } 
-    }
 }
 
 // Various impls for Kminmer.
