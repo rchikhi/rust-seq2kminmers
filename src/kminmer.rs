@@ -126,7 +126,7 @@ impl PartialOrd for KminmerVec{
 
 #[derive(Clone, Debug)]
 pub struct KminmerHash {
-    pub hash: u32, // hash from Vec of minimizer hashes
+    pub hash: H, // hash from Vec of minimizer hashes
     pub start: usize, // Start location
     pub end: usize, // End location
     pub offset: usize, // Offset (index in the k-min-mer array)
@@ -137,17 +137,17 @@ pub struct KminmerHash {
 impl Kminmer for  KminmerHash {
     // Create a new Kminmer object.
     fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
-        let hash;
+        let hash: H;
         let rev;
         let mut rev_mers = mers.to_vec();
         rev_mers.reverse();
         let mers = mers.to_vec();
         if rev_mers < mers {
-            hash = hash32(&rev_mers);
+            hash = hash32(&rev_mers) as H;
             rev = true;
         }
         else {
-            hash = hash32(&mers); 
+            hash = hash32(&mers) as H; 
             rev = false;
         }
         KminmerHash {
@@ -158,14 +158,14 @@ impl Kminmer for  KminmerHash {
             rev,
         }    
     }
-    fn get_hash(&self) -> u64 {
-        self.hash as u64
+    fn get_hash(&self) -> H {
+        self.hash as H 
     }
 }
 
 impl KminmerHash {
     // Create a new Kminmer object.
-    pub fn new_from_hash(hash :u32, start: usize, end: usize, offset: usize, rev: bool) -> Self {
+    pub fn new_from_hash(hash :H, start: usize, end: usize, offset: usize, rev: bool) -> Self {
         KminmerHash {
             hash,
             start,
