@@ -194,6 +194,9 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 //let (hash,rev) = nthash1_minimizer_space(&self.curr_sk[self.count..self.count+self.k]);
                 //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
                 //res = Some(Kminmer::new(&self.curr_sk[0..0], 0, 0,0));
+
+                // new_from_hash is currently only good when KH is u64 and not Simd: otherwise slows things down at the
+                // Dashmap level due to many kminmer hash collision
                 res = Some(KminmerHash::new_from_hash(nthash, self.curr_pos[self.count], j + self.l - 1, self.count, rev));
                 self.count += 1;
                 break; 

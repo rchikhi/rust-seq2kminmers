@@ -143,11 +143,11 @@ impl Kminmer for  KminmerHash {
         rev_mers.reverse();
         let mers = mers.to_vec();
         if rev_mers < mers {
-            hash = hash32(&rev_mers) as KH;
+            hash = hash64(&rev_mers) as KH;
             rev = true;
         }
         else {
-            hash = hash32(&mers) as KH; 
+            hash = hash64(&mers) as KH; 
             rev = false;
         }
         KminmerHash {

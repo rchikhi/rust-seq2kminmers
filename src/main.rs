@@ -6,7 +6,7 @@ use rust_parallelfastx::{parallel_fastx};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let mode = HashMode::Simd;
+    let mode = HashMode::Hpc;
 
     // A simple example given just a sequence in a string
     if args.len() < 2
