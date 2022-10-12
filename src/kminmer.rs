@@ -7,7 +7,7 @@ use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use fxhash::{hash, hash32, hash64};
 
-use crate::H;
+use crate::{H,KH};
 
 pub trait Kminmer {
     fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self;
@@ -39,10 +39,10 @@ impl Kminmer for KminmerVec {
     }
     
     // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
-    fn get_hash(&self) -> H {
+    fn get_hash(&self) -> KH {
         let mut hash = DefaultHasher::new();
         self.mers.hash(&mut hash);
-        hash.finish() as H
+        hash.finish() as KH
     }
 
 }
@@ -103,7 +103,7 @@ impl Eq for KminmerVec {
 }
 
 impl Hash for KminmerVec {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<G: Hasher>(&self, state: &mut G) {
         self.mers.hash(state);
     }
 }
@@ -137,17 +137,17 @@ pub struct KminmerHash {
 impl Kminmer for  KminmerHash {
     // Create a new Kminmer object.
     fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self {
-        let hash: H;
+        let hash: KH;
         let rev;
         let mut rev_mers = mers.to_vec();
         rev_mers.reverse();
         let mers = mers.to_vec();
         if rev_mers < mers {
-            hash = hash32(&rev_mers) as H;
+            hash = hash32(&rev_mers) as KH;
             rev = true;
         }
         else {
-            hash = hash32(&mers) as H; 
+            hash = hash32(&mers) as KH; 
             rev = false;
         }
         KminmerHash {
@@ -158,14 +158,14 @@ impl Kminmer for  KminmerHash {
             rev,
         }    
     }
-    fn get_hash(&self) -> H {
-        self.hash as H 
+    fn get_hash(&self) -> KH {
+        self.hash as KH 
     }
 }
 
 impl KminmerHash {
     // Create a new Kminmer object.
-    pub fn new_from_hash(hash :H, start: usize, end: usize, offset: usize, rev: bool) -> Self {
+    pub fn new_from_hash(hash :KH, start: usize, end: usize, offset: usize, rev: bool) -> Self {
         KminmerHash {
             hash,
             start,
