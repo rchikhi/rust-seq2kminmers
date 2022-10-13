@@ -75,8 +75,8 @@ pub struct KminmersIterator<'a> {
     nthash_iterator: Option<NtHashIterator<'a>>,
     curr_sk : Vec::<H>,
     curr_pos : Vec::<usize>,
-    kminmer_fhash: H,
-    kminmer_rhash: H,
+    kminmer_fhash: KH,
+    kminmer_rhash: KH,
     count : usize,
 }
 
@@ -127,6 +127,34 @@ impl<'a> KminmersIterator<'a> {
     }
 }
 
+
+// the madness one needs to go through for function overloading
+// (thanks for the help, https://stackoverflow.com/a/56100816)
+trait MixHash{
+    fn mixhash(&self) -> Self
+        where Self: Sized;
+}
+
+impl MixHash for u32
+{
+    fn mixhash(&self) -> u32 
+    {
+        *self
+    }   
+}
+
+impl MixHash for u64
+{
+    fn mixhash(&self) -> u64
+    {
+        let mut x = *self;
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        x
+    }
+}
+
 impl<'a> Iterator for KminmersIterator<'a> {
     type Item = KminmerType;
     fn next(&mut self) -> Option<KminmerType> {
@@ -173,23 +201,25 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
 
             self.curr_pos.push(j); // raw sequence position
+            let hash = (hash as KH).mixhash(); // only necessary if input hashes are u32
             self.curr_sk.push(hash);
+
             if self.curr_sk.len() >= self.k { 
                 //assert!(self.curr_sk.len() == self.count+self.k) ;  // commented, but it's true
                 //assert!(self.curr_pos[self.count+self.k - 1] == j); // same
                 if self.curr_sk.len() == self.k
                 {
-                    self.kminmer_fhash ^= (hash as KH).rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
-                    self.kminmer_rhash ^= (hash as KH).rotate_left((self.curr_sk.len()-1) as u32);
+                    self.kminmer_fhash ^= hash.rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
+                    self.kminmer_rhash ^= hash.rotate_left((self.curr_sk.len()-1) as u32);
                 }
                 else
                 {
-                    self.kminmer_fhash = self.kminmer_fhash.rotate_left(1)  ^ (hash as KH)
-                        ^ (self.curr_sk[self.count-1] as KH).rotate_left(self.k as u32);
-                    self.kminmer_rhash = self.kminmer_rhash.rotate_right(1) ^ (hash as KH).rotate_left((self.k-1) as u32)  
-                        ^ (self.curr_sk[self.count-1] as KH).rotate_right(1);
+                    self.kminmer_fhash = self.kminmer_fhash.rotate_left(1)  ^ hash
+                        ^ self.curr_sk[self.count-1].rotate_left(self.k as u32);
+                    self.kminmer_rhash = self.kminmer_rhash.rotate_right(1) ^ hash.rotate_left((self.k-1) as u32)  
+                        ^ self.curr_sk[self.count-1].rotate_right(1);
                 }
-                let nthash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash } as KH;
+                let nthash = if self.kminmer_fhash < self.kminmer_rhash { self.kminmer_fhash } else { self.kminmer_rhash };
                 let rev = self.kminmer_rhash < self.kminmer_fhash;
                 //let (hash,rev) = nthash1_minimizer_space(&self.curr_sk[self.count..self.count+self.k]);
                 //res = Some(Kminmer::new(&self.curr_sk[self.count..self.count+self.k], self.curr_pos[self.count], j + self.l - 1, self.count));
@@ -203,8 +233,8 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
             else
             {
-                self.kminmer_fhash ^= (hash as KH).rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
-                self.kminmer_rhash ^= (hash as KH).rotate_left((self.curr_sk.len()-1) as u32);
+                self.kminmer_fhash ^= hash.rotate_left((self.k-1-(self.curr_sk.len()-1)) as u32);
+                self.kminmer_rhash ^= hash.rotate_left((self.curr_sk.len()-1) as u32);
             }
         }
         res
