@@ -43,7 +43,7 @@ fn main() {
                 //
                 _count += 1;
             }
-            println!("seq_id {} nb kminmers: {}",_seq_id,_count);
+            //println!("seq_id {} nb kminmers: {}",_seq_id,_count);
 
         };
 

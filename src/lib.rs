@@ -131,27 +131,27 @@ impl<'a> KminmersIterator<'a> {
 // the madness one needs to go through for function overloading
 // (thanks for the help, https://stackoverflow.com/a/56100816)
 trait MixHash{
-    fn mixhash(&self) -> Self
+    fn mixhash(&self) -> KH 
         where Self: Sized;
 }
 
 impl MixHash for u32
 {
-    fn mixhash(&self) -> u32 
+    fn mixhash(&self) -> KH 
     {
-        *self
+        let mut x :KH= *self as KH;
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        x
     }   
 }
 
 impl MixHash for u64
 {
-    fn mixhash(&self) -> u64
+    fn mixhash(&self) -> KH
     {
-        let mut x = *self;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        x
+        *self
     }
 }
 
@@ -201,7 +201,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
 
             self.curr_pos.push(j); // raw sequence position
-            let hash = (hash as KH).mixhash(); // only necessary if input hashes are u32
+            let hash : KH = if self.mode == HashMode::Simd { (hash as u64).mixhash() } else { hash.mixhash() }; // only necessary if input hashes are u32
             self.curr_sk.push(hash);
 
             if self.curr_sk.len() >= self.k { 
