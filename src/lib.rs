@@ -201,7 +201,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
 
             self.curr_pos.push(j); // raw sequence position
-            let hash : KH = if self.mode == HashMode::Simd { (hash as u64).mixhash() } else { hash.mixhash() }; // only necessary if input hashes are u32
+            let hash : KH = if self.mode == HashMode::Simd { (hash as u32).mixhash() } else { hash.mixhash() }; // only necessary if input hashes are u32
             self.curr_sk.push(hash);
 
             if self.curr_sk.len() >= self.k { 
