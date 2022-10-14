@@ -23,7 +23,7 @@ fn main() {
     // A complete example with FASTA parsing
     else
     {
-        let k = 7;
+        let k = 5;
         let l = 31;
         let d = 0.01;
         let filename = &args[1];
