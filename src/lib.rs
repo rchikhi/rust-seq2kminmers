@@ -7,8 +7,8 @@ mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
 mod nthash_simd;
 pub use nthash_simd::NtHashSIMDIterator;
-mod nthash_hpc_simd;
-pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
+//mod nthash_hpc_simd;
+//pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
 mod nthash_c;
 pub use nthash_c::nthash_c;
 mod hpc;
@@ -69,7 +69,7 @@ pub struct KminmersIterator<'a> {
     l: usize,
     hash_bound: H,
     mode: HashMode,
-    nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
+    //nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
     nthash_simd_iterator: Option<NtHashSIMDIterator<'a>>,
     nthash_iterator: Option<NtHashIterator<'a>>,
@@ -86,7 +86,7 @@ impl<'a> KminmersIterator<'a> {
 
         let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
 
-        let mut nthash_hpc_simd_iterator = None;
+        //let mut nthash_hpc_simd_iterator = None;
         let mut nthash_hpc_iterator = None;
         let mut nthash_simd_iterator = None;
         let mut nthash_iterator = None;
@@ -97,9 +97,9 @@ impl<'a> KminmersIterator<'a> {
             else if mode == HashMode::Simd {
                 nthash_simd_iterator = Some(NtHashSIMDIterator::new(seq, l, hash_bound));
             }
-            else if mode == HashMode::HpcSimd {
+            /*else if mode == HashMode::HpcSimd {
                 nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound));
-            }
+            }*/
             else { 
                 nthash_iterator = Some(NtHashIterator::new(seq, l).unwrap());
             }
@@ -114,7 +114,7 @@ impl<'a> KminmersIterator<'a> {
             l,
             hash_bound,
             mode,
-            nthash_hpc_simd_iterator,
+            //nthash_hpc_simd_iterator,
             nthash_hpc_iterator,
             nthash_simd_iterator,
             nthash_iterator,
@@ -163,14 +163,16 @@ impl<'a> Iterator for KminmersIterator<'a> {
         {
             let mut j;
             let mut hash: H;
-            if self.mode == HashMode::HpcSimd {
+            /*if self.mode == HashMode::HpcSimd {
                 match self.nthash_hpc_simd_iterator.as_mut().unwrap().next()
                 {
                     Some(n) => { (j,hash) = n; } 
                     None => return None
                 };
             }
-            else if self.mode == HashMode::Simd {
+            else 
+            */
+            if self.mode == HashMode::Simd {
                 match self.nthash_simd_iterator.as_mut().unwrap().next()
                 {
                     Some(n) => { (j,hash) = n; } 

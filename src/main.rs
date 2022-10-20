@@ -1,7 +1,7 @@
-#![feature(bench_black_box)]
 use std::time::Instant;
 use rust_seq2kminmers::{KminmersIterator, HashMode};
 use rust_parallelfastx::{parallel_fastx};
+use rust_seq2kminmers::{hpc, encode_rle_simd};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -11,9 +11,12 @@ fn main() {
     // A simple example given just a sequence in a string
     if args.len() < 2
     {
-        let seq = b"AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
-        println!("Demonstrating how to construct k-min-mers (k=10, l=5, d=0.1) out of a test sequence: {}",std::str::from_utf8(seq).unwrap());
-        let iter = KminmersIterator::new(seq, 10, 5, 0.1, mode).unwrap();
+        let seq = "AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
+        println!("seq:    {:?}",seq);
+        println!("HPC:    {:?}",hpc(seq));
+        println!("HPCopt: {:?}",encode_rle_simd(seq).0);
+        println!("Demonstrating how to construct k-min-mers (k=10, l=5, d=0.1) out of a test sequence: {}",seq);
+        let iter = KminmersIterator::new(seq.as_bytes(), 10, 5, 0.1, mode).unwrap();
         for kminmer in iter
         {
             println!("kminmer: {:?}",kminmer);
@@ -38,9 +41,6 @@ fn main() {
             for kminmer in iter
             {
                 //println!("seq_id {} kminmer: {:?}",_seq_id,kminmer);
-                // prevent from being optimized away
-                std::hint::black_box(&kminmer);
-                //
                 _count += 1;
             }
             //println!("seq_id {} nb kminmers: {}",_seq_id,_count);
