@@ -200,8 +200,8 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
             let prev_current_idx;
             let mut prev :u8 = *self.seq.get_unchecked(self.current_idx_plus_k);
             let mut cur : u8 = prev;
-            let mut h_seqk :H = 0;
-            let mut rc_seqk :H= 0;
+            let mut h_seqk :H;
+            let mut rc_seqk :H;
 
             // special case for very first element
             if std::intrinsics::unlikely(self.first_element)
@@ -214,13 +214,13 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                     if self.current_idx_plus_k >= self.seq_len || cur != prev {
                         break
                     }
-
                 }
 
                 if self.current_idx_plus_k >= self.seq_len  {
                     return None;
                 };
 
+                // prepare everything for the next char
                 (h_seqk, rc_seqk) = (h(cur),rc(cur));
                 let pos = std::intrinsics::unchecked_rem(self.buffer_pos+k,BUFLEN);
                 *self.h_rc_buffer.get_unchecked_mut(pos) = (h_seqk, rc_seqk);
@@ -228,10 +228,13 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                 self.buffer_pos += 1;
 
                 hash = H::min(self.rh, self.fh);
-                if hash < self.hash_bound {
-                    prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos,BUFLEN));
+                if hash <= self.hash_bound {
+                    prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+BUFLEN-1,BUFLEN));
                     return Some((prev_current_idx, hash))
                 }
+            }
+            else  {
+                (h_seqk, rc_seqk)  = *self.h_rc_buffer .get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+k-1,BUFLEN));
             }
 
             loop
@@ -262,6 +265,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                     return None;
                 };
 
+                // prepare everything for the next char
                 (h_seqk, rc_seqk) = (h(cur),rc(cur));
                 let pos = std::intrinsics::unchecked_rem(self.buffer_pos+k,BUFLEN);
                 *self.h_rc_buffer.get_unchecked_mut(pos) = (h_seqk, rc_seqk);
@@ -272,7 +276,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                 if hash <= self.hash_bound { break; }
             }
 
-        prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos,BUFLEN));
+        prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+BUFLEN-1,BUFLEN));
         Some((prev_current_idx, hash))
         }
     }
