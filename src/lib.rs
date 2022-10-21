@@ -5,8 +5,8 @@ mod kminmer;
 pub use kminmer::{Kminmer, KminmerVec, KminmerHash};
 mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
-mod nthash_simd;
-pub use nthash_simd::NtHashSIMDIterator;
+mod nthash2_avx512_32;
+pub use nthash2_avx512_32::NtHashSIMDIterator;
 //mod nthash_hpc_simd;
 //pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
 mod nthash_c;
@@ -29,6 +29,7 @@ pub enum HashMode {
 //pub type FH = f32;
 pub type H  = u64; 
 pub type FH = f64;
+//pub type H  = u16; 
 
 // kminmer hash type 
 pub type KH = u64; 
@@ -73,7 +74,7 @@ pub struct KminmersIterator<'a> {
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
     nthash_simd_iterator: Option<NtHashSIMDIterator<'a>>,
     nthash_iterator: Option<NtHashIterator<'a>>,
-    curr_sk : Vec::<H>,
+    curr_sk : Vec::<KH>,
     curr_pos : Vec::<usize>,
     kminmer_fhash: KH,
     kminmer_rhash: KH,
@@ -105,7 +106,7 @@ impl<'a> KminmersIterator<'a> {
             }
         }
         
-        let curr_sk  = Vec::<H>    ::with_capacity((seq.len() as FH * density) as usize);
+        let curr_sk  = Vec::<KH>    ::with_capacity((seq.len() as FH * density) as usize);
         let curr_pos = Vec::<usize>::with_capacity((seq.len() as FH * density) as usize);
 
         Ok(KminmersIterator {

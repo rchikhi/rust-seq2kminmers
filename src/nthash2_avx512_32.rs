@@ -1,3 +1,6 @@
+// This is mirounga's AVX512 port of ntHash2, 32 bit hashes
+// it's not quite nthash2 or nthash1, more of a hybrid 
+
 #![allow(non_snake_case)]
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;

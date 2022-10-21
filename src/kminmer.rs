@@ -11,7 +11,7 @@ use crate::{H,KH};
 
 pub trait Kminmer {
     fn new(mers: &[H], start: usize, end: usize, offset: usize) -> Self;
-    fn get_hash(&self) -> H;
+    fn get_hash(&self) -> KH;
 }
 
 #[derive(Clone, Debug)]
@@ -126,7 +126,7 @@ impl PartialOrd for KminmerVec{
 
 #[derive(Clone, Debug)]
 pub struct KminmerHash {
-    pub hash: H, // hash from Vec of minimizer hashes
+    pub hash: KH, // hash from Vec of minimizer hashes
     pub start: usize, // Start location
     pub end: usize, // End location
     pub offset: usize, // Offset (index in the k-min-mer array)

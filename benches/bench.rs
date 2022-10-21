@@ -5,6 +5,7 @@
 
 #[macro_use]
 extern crate criterion;
+extern crate bencher;
 
 use rust_seq2kminmers::{FH,H};
 use criterion::{Bencher, Criterion, Throughput, BenchmarkId};
@@ -31,20 +32,18 @@ fn nthash_bench(c: &mut Criterion) {
     let mut group = c.benchmark_group("BenchmarkGroup");
     group.throughput(Throughput::Bytes(seq.len() as u64));
 
-    /*    group.bench_with_input(BenchmarkId::new("encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-          let hpc_str = rust_seq2kminmers::encode_rle(i);
-          })});*/
-
     group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
         let _hpc_str = rust_seq2kminmers::hpc(i);
     })});
 
-    group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd_2bit_raw", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-        let _hpc_str = rust_seq2kminmers::encode_rle_simd_2bit_raw(i);
+    group.bench_with_input(BenchmarkId::new("hpc_encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
+        let _hpc_str = rust_seq2kminmers::encode_rle(i);
+        bencher::black_box(_hpc_str);
     })});
 
     group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
         let _hpc_str = rust_seq2kminmers::encode_rle_simd(i);
+        bencher::black_box(_hpc_str);
     })});
 
     group.bench_with_input(BenchmarkId::new("nthash", seq_len), &seq,

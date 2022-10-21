@@ -200,8 +200,8 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
             let prev_current_idx;
             let mut prev :u8 = *self.seq.get_unchecked(self.current_idx_plus_k);
             let mut cur : u8 = prev;
-            let mut h_seqk :u64 = 0;
-            let mut rc_seqk :u64 = 0;
+            let mut h_seqk :H = 0;
+            let mut rc_seqk :H= 0;
 
             // special case for very first element
             if std::intrinsics::unlikely(self.first_element)

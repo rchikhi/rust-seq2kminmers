@@ -1,7 +1,9 @@
 use std::time::Instant;
+#[allow(unused_imports)]
+use rand::distributions::{Distribution, Uniform};
 use rust_seq2kminmers::{KminmersIterator, HashMode};
 use rust_parallelfastx::{parallel_fastx};
-use rust_seq2kminmers::{hpc, encode_rle_simd};
+use rust_seq2kminmers::{encode_rle, hpc, encode_rle_simd};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -11,10 +13,29 @@ fn main() {
     // A simple example given just a sequence in a string
     if args.len() < 2
     {
-        let seq = "AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
+        //let seq = "AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
+        let seq = "AACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCA";
+
+        /*
+        let range = Uniform::from(0..4);
+        let mut rng = rand::thread_rng();
+        let seq_len = 10000;
+        let randseq = (0..seq_len)
+            .map(|_| match range.sample(&mut rng) {
+                0 => 'A',
+                1 => 'C',
+                2 => 'G',
+                3 => 'T',
+                _ => 'N',
+            })
+        .collect::<String>();
+        let seq = &randseq;
+        */
+
         println!("seq:    {:?}",seq);
         println!("HPC:    {:?}",hpc(seq));
-        println!("HPCopt: {:?}",encode_rle_simd(seq).0);
+        println!("HPCopt: {:?}",encode_rle_simd(seq));
+        println!("encode_rle:{:?}",encode_rle(seq));
         println!("Demonstrating how to construct k-min-mers (k=10, l=5, d=0.1) out of a test sequence: {}",seq);
         let iter = KminmersIterator::new(seq.as_bytes(), 10, 5, 0.1, mode).unwrap();
         for kminmer in iter
@@ -38,7 +59,7 @@ fn main() {
             let iter = KminmersIterator::new(seq_str, l, k, d, mode).unwrap();
             //let iter :Vec<u64> = vec![];
             let mut _count = 0;
-            for kminmer in iter
+            for _kminmer in iter
             {
                 //println!("seq_id {} kminmer: {:?}",_seq_id,kminmer);
                 _count += 1;

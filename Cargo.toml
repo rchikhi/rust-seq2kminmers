@@ -17,11 +17,12 @@ thiserror = "1.0"
 fxhash = "0.2.1"
 #rust-parallelfastx = "0.1.1"
 rust-parallelfastx = { git = "https://github.com/rchikhi/rust-parallelfastx"  }
+rand = "^0.5"
 
 [dev-dependencies]
 criterion = "0.4.0"
 quickcheck = "^0.7.1"
-rand = "^0.5"
+bencher = "0.1.5"
 
 [[bench]]
 name = "bench"
