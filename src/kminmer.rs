@@ -40,6 +40,7 @@ impl Kminmer for KminmerVec {
     
     // Hash the Vec of minimizer hashes to a u64 (this is used throughout the reference processing).
     fn get_hash(&self) -> KH {
+        println!("[warning, seq2kminmers] generic get_hash() method called; Shouldn't, it's a performance issue. Use KminmerHash instead");
         let mut hash = DefaultHasher::new();
         self.mers.hash(&mut hash);
         hash.finish() as KH

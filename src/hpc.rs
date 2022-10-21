@@ -104,7 +104,7 @@ pub fn encode_rle_simd(s: &str) -> (String,Vec<u32>)
             let v128_512 = _mm512_cvtepi8_epi32(v128);
             let tmp_res_512 = _mm512_mask_compress_epi32(tmp_res_512, mask, v128_512);
             let tmp_res_128 = _mm512_cvtepi32_epi8(tmp_res_512);
-            let mask128 = (1 << mask.count_ones()) - 1;
+            let mask128 = ((((1 as u32) << mask.count_ones()) as u32) - 1) as u16;
             _mm_mask_storeu_epi8            (res_ptr.offset(hpc_len as isize) as *mut i8, mask128, tmp_res_128);
             _mm512_mask_compressstoreu_epi32(pos_ptr.offset(hpc_len as isize) as *mut u8, mask,    _positions);
         
@@ -124,12 +124,12 @@ pub fn encode_rle_simd(s: &str) -> (String,Vec<u32>)
             let v128_shifted = _mm_slli_si128(v128,1);
             let mut mask = (! _mm_cmpeq_epi8_mask(v128,v128_shifted)) & 0xFFFE;
             mask |= (*ptr.offset((i*width) as isize) != *ptr.offset((i*width-1) as isize)) as u16;
-            mask &= ((1 << (len & (width-1))) - 1) as u16; // ignore the rest of the buffer, the string end earlier
+            mask &= (((1 as u32) << (len & (width-1)) as u32) - 1) as u16; // ignore the rest of the buffer, the string end earlier
             let tmp_res_512 = _mm512_setzero_si512();
             let v128_512 = _mm512_cvtepi8_epi32(v128);
             let tmp_res_512 = _mm512_mask_compress_epi32(tmp_res_512, mask, v128_512);
             let tmp_res_128 = _mm512_cvtepi32_epi8(tmp_res_512);
-            let mask128 = (1 << mask.count_ones()) - 1;
+            let mask128 = ((((1 as u32) << mask.count_ones()) as u32) - 1) as u16;
             _mm_mask_storeu_epi8            (res_ptr.offset(hpc_len as isize) as *mut i8, mask128, tmp_res_128);
             _mm512_mask_compressstoreu_epi32(pos_ptr.offset(hpc_len as isize) as *mut u8, mask,    _positions);
              _positions = _mm512_add_epi32(_positions, _16);

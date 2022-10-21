@@ -81,7 +81,7 @@ fn rc(nt: u8) -> H {
 /// exposes many other useful methods. In this example we use `collect` to
 /// generate all hashes and put them in a `Vec<H>`.
 /// ```
-///     use rust_seq2kminmers::NtHashHPCIterator;
+///     use rust_seq2kminmers::{NtHashHPCIterator, FH, H};
 ///
 ///     # fn main() {
 ///     let seq = b"ACTGCACATGATGAGTAGATGATGATGATGATGATATGATGATAT";

@@ -39,24 +39,25 @@ pub type KminmerType = KminmerHash;
 // An iterator for getting k-min-mers out of a DNA sequence
 ///
 /// Parameters:
-/// l: minimizer length
-/// k: k-min-mer length
-/// density: density of minimizer scheme
+///     * l: minimizer length
+///     * k: k-min-mer length
+///     * density: density of minimizer scheme
+///
 /// mode: 
-///     Hpc or Hpcsimd:
-///     minimizers are computed as if the sequence was homopolymer compressed but all positions reported
-///      in original sequence space,
-///     Regular: everything is done in original sequence space
+///     * Hpc or Hpcsimd:
+///          minimizers are computed as if the sequence was homopolymer compressed but all positions reported
+///          in original sequence space,
+///     * Regular: everything is done in original sequence space
 ///
 /// Hashing is performed by NtHash1
 ///
 /// Example usage:
 /// ```
-///     use rust_seq2kminmers::KminmersIterator;
+///     use rust_seq2kminmers::{KminmersIterator, HashMode, Kminmer};
 ///     
 ///     fn main() {
 ///        let seq = b"AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
-///        let iter = KminmersIterator::new(seq, 10, 5, 0.1, false).unwrap();
+///        let iter = KminmersIterator::new(seq, 10, 5, 0.1, HashMode::Hpc).unwrap();
 ///        for kminmer in iter
 ///        {
 ///            println!("kminmer: {:?}",kminmer);
