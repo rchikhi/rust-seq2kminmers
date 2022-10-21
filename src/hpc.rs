@@ -40,14 +40,7 @@ pub fn hpc(s: &str) -> String
     hpc_seq
 }
 
-
-// second simd attempt based on the first one
-// this time a proper HPC string of chars is output
-// 
-// caution: 
-// - unsure if the first nucleotide every 32th is correctly handled. probably not.
-// - only works for sequences lengths multiples of 32, otherwise truncates to 
-// multiple of 32 below
+// simd version. seems to work
 pub fn encode_rle_simd(s: &str) -> (String,Vec<u32>)
 {
     let n : &[u8] = s.as_bytes();
@@ -70,9 +63,9 @@ pub fn encode_rle_simd(s: &str) -> (String,Vec<u32>)
         let res_ptr = alloc::alloc(res_layout) as *mut u8;
         let pos_layout = alloc::Layout::from_size_align_unchecked(len << 2, 8);
         let pos_ptr = alloc::alloc(pos_layout) as *mut u32;
-        // The docs specify: "ptr needs to have been previously allocated via String/Vec<T> (at
-        // least, it’s highly likely to be incorrect if it wasn’t)." And yet somehow.. allocation
-        // with the lines below don't work:
+        // The docs of from_raw_parts specify: "ptr needs to have been previously allocated via String/Vec<T> 
+        // (at least, it’s highly likely to be incorrect if it wasn’t)." And yet somehow.. allocation with the 
+        // lines below don't work:
         /*let mut res =     String::with_capacity(len);
         let mut pos = Vec::<u32>::with_capacity(len);
         let res_ptr = res.as_mut_ptr(); 
