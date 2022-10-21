@@ -28,10 +28,11 @@ pub struct NtHashSIMDIterator<'a> {
     k: usize,
 }
 
-
+// caution: seems it's only valid for k <= 31
 impl<'a> NtHashSIMDIterator<'a> {
     /// Creates a new NtHashSIMDIterator with internal state properly initialized.
     pub fn new(seq: &'a [u8], k: usize, hash_bound: H) -> NtHashSIMDIterator<'a>{
+        assert!(k<=31);
         unsafe {
         let length = seq.len();
         // maybe need to pad seq so that it's a multiple of 16 nucleotides. let's see.

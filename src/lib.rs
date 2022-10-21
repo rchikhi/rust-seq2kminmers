@@ -25,11 +25,11 @@ pub enum HashMode {
 }
 
 // minimizer hash type
-//pub type H  = u32; // hash precision
-//pub type FH = f32;
-pub type H  = u64; 
-pub type FH = f64;
 //pub type H  = u16; 
+//pub type H  = u32; // hash precision
+pub type H  = u64; 
+//pub type FH = f32;
+pub type FH = f64;
 
 // kminmer hash type 
 pub type KH = u64; 
@@ -86,7 +86,7 @@ pub struct KminmersIterator<'a> {
 impl<'a> KminmersIterator<'a> {
     pub fn new(seq: &'a [u8], l: usize, k: usize, density: FH, mode: HashMode) -> Result<KminmersIterator<'a>> {
 
-        let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
+        let hash_bound = ((density as FH) * (H::MAX as FH)) as H;
 
         //let mut nthash_hpc_simd_iterator = None;
         let mut nthash_hpc_iterator = None;
@@ -137,11 +137,28 @@ trait MixHash{
         where Self: Sized;
 }
 
+impl MixHash for u16
+{
+    fn mixhash(&self) -> KH 
+    {
+        let mut x :KH= *self as KH;
+        // need a stronger hash this time (murmur64)
+        x ^= x.rotate_left(33);
+        x*= 0xff51afd7ed558ccd;
+        x ^= x.rotate_left(33);
+        x *= 0xc4ceb9fe1a85ec53;
+        x ^= x.rotate_left(33);
+        x
+    }   
+}
+
 impl MixHash for u32
 {
     fn mixhash(&self) -> KH 
     {
         let mut x :KH= *self as KH;
+        // this is xorshift
+        // but maybe use murmur here too (for less kminmer hashes collisions)
         x ^= x << 13;
         x ^= x >> 7;
         x ^= x << 17;
