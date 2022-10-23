@@ -3,18 +3,20 @@ use std::time::Instant;
 use rand::distributions::{Distribution, Uniform};
 use rust_seq2kminmers::{KminmersIterator, HashMode};
 use rust_parallelfastx::{parallel_fastx};
+#[allow(unused_imports)]
 use rust_seq2kminmers::{encode_rle, hpc, encode_rle_simd};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let mode = HashMode::Hpc;
+    //let mode = HashMode::Regular;
+    let mode = HashMode::Simd;
 
     // A simple example given just a sequence in a string
     if args.len() < 2
     {
-        //let seq = "AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
-        let seq = "AACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCA";
+        let seq = "AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
+        //let seq = "AACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCAAACTTTTTGGGGGGCAAAAAACCCCCCCTGCCCCCCA";
 
         /*
         let range = Uniform::from(0..4);
@@ -34,10 +36,11 @@ fn main() {
 
         println!("seq:    {:?}",seq);
         println!("HPC:    {:?}",hpc(seq));
-        println!("HPCopt: {:?}",encode_rle_simd(seq));
-        println!("encode_rle:{:?}",encode_rle(seq));
-        println!("Demonstrating how to construct k-min-mers (k=10, l=5, d=0.1) out of a test sequence: {}",seq);
-        let iter = KminmersIterator::new(seq.as_bytes(), 10, 5, 0.1, mode).unwrap();
+        // no point displaying that, correctness is tested in tests/main.src
+        //println!("HPCopt: {:?}",encode_rle_simd(seq));
+        //println!("encode_rle:{:?}",encode_rle(seq));
+        println!("Demonstrating how to construct k-min-mers (l=31, k=5, d=0.1) out of a test sequence: {}",seq);
+        let iter = KminmersIterator::new(seq.as_bytes(), 31, 5, 0.1, mode).unwrap();
         for kminmer in iter
         {
             println!("kminmer: {:?}",kminmer);

@@ -1,9 +1,4 @@
-// This is mirounga's AVX512 port of ntHash2, 32 bit hashes
-// it's not quite nthash2 or nthash1, more of a hybrid 
-// 
-// TODO: not totally sure it works well, needs some more testing. anyhow, I've fallen back to
-// nthash1 now, so this code isn't needed for now (it will only be needed if i hash for k values
-// above 32, which will require nthash2 as nthash1-32bithashes is flawed with k>=32)
+// This one is faithful to ntHash 1
 
 #![allow(non_snake_case)]
 #[cfg(target_arch = "x86_64")]
@@ -55,6 +50,8 @@ impl<'a> NtHashSIMDIterator<'a> {
 
         let (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_initial(seq, k, _ck);
 
+        //println!("after initial: hval {:#x?} fhval {:#x?} rhval {:#x?}", _hVal, _fhVal, _rhVal);
+
         let mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
         let nb_ones = mask.count_ones() as usize;
         _mm512_mask_compressstoreu_epi32(hashes_ptr as *mut u8, mask, _hVal);
@@ -99,7 +96,8 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
         {
             let sentinel = self.length - self.k + 1;
             let _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
-            let _ck = _mm512_set1_epi32((31 - (self.k % 31)) as i32);
+            let _k  = _mm512_set1_epi32(self.k     as i32);
+            let _km = _mm512_set1_epi32((self.k-1) as i32);
             let _hashBound = _mm512_set1_epi32((self.hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
             let mut _hVal = self._hVal;
             let mut _fhVal = self._fhVal;
@@ -117,8 +115,10 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                     break;
                 }
 
-                (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(string, i-1, i-1+k, _ck, _fhVal, _rhVal);
+                (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_sliding(string, i-1, i-1+k, _k, _km, _fhVal, _rhVal);
+                //println!("at i {}: hval {:#x?} fhval {:#x?} rhval {:#x?}", i, _hVal, _fhVal, _rhVal);
                 i += 16;
+        
 
                 let mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
                 let nb_ones = mask.count_ones();
@@ -136,8 +136,6 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                     self.nb_ones = nb_ones as usize;
                     break;
                 }
-                
-
             }
             if res != None
             {
@@ -149,6 +147,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             }
         }
 
+        println!("simd res: {:#x?}",res);
         res
         }
     }
@@ -160,7 +159,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
 }
 
 
-// -------- follows ntHash-AVX2, this is the AVX512 32bit hashes version
+// -------- follows ntHash-AVX2 (old code still in comments), this is a AVX512 32bit hashes version
 //
 
 // convert kmers 8 -> 3 bit representation, N character is mapped to 4
@@ -182,7 +181,6 @@ unsafe fn _mm_CKX_epu8(_kmerSeq: __m128i) -> __m128i{
             _mask))
 }
 
-
 unsafe fn _mm512_rori31_epu32<const IMM: u32, const THIRTYTWO_MINUS_IMM: u32>(_v: __m512i) -> __m512i {
     _mm512_or_epi32(
         _mm512_srli_epi32(
@@ -194,8 +192,6 @@ unsafe fn _mm512_rori31_epu32<const IMM: u32, const THIRTYTWO_MINUS_IMM: u32>(_v
                 THIRTYTWO_MINUS_IMM),
             1))
 }
-
-
 
 // rotate 31-right bits of "_v" to the right by _s position
 // elements of _s must be less than 31
@@ -270,44 +266,51 @@ unsafe fn _mm512_LKR_epu32(kmerSeq: &[u8], offset: usize) -> __m512i {
 
 // forward-strand hash value of the base kmer, i.e. fhval(kmer_0)
 unsafe fn _mm512_NTF_epu32(kmerSeq: &[u8], k: usize) -> __m512i {
-    let mut _hVal31 = _mm512_setzero_si512();
+    let mut _hVal = _mm512_setzero_si512();
 
     for i in 0..k
     {
-        _hVal31 = _mm512_rori31_epu32::<30,{32-30}>(_hVal31);
+        //_hVal = _mm512_rori31_epu32::<30,{32-30}>(_hVal);
+        _hVal = _mm512_rol_epi32(_hVal, 1);
 
-        let _kmer31 = _mm512_LKF_epu32(kmerSeq, i);
+        let _kmer = _mm512_LKF_epu32(kmerSeq, i);
 
-        _hVal31 = _mm512_xor_epi32(
-            _hVal31,
-            _kmer31);
+        _hVal = _mm512_xor_epi32(
+            _hVal,
+            _kmer);
     }
 
-    _hVal31
+    _hVal
 }
 
 // reverse-strand hash value of the base kmer, i.e. rhval(kmer_0)
 unsafe fn _mm512_NTR_epu32(kmerSeq: &[u8], k: usize, _ck: __m512i) -> __m512i {
     let _zero = _mm512_setzero_si512();
 
-    let mut _hVal31 = _zero;
+    let mut _hVal = _zero;
 
     for i in 0..k
     {
-        let mut _kmer31 = _mm512_LKR_epu32(kmerSeq, i);
 
-        _kmer31 = _mm512_rorv31_epu32(
-            _kmer31,
+        let mut _kmer = _mm512_LKR_epu32(kmerSeq, i);
+        
+        /*_kmer = _mm512_rorv31_epu32(
+            _kmer,
+            _ck);*/
+
+        _kmer = _mm512_rolv_epi32(
+            _kmer,
             _ck);
 
-        _hVal31 = _mm512_xor_epi32(
-            _hVal31,
-            _kmer31);
+        _hVal = _mm512_xor_epi32(
+            _hVal,
+            _kmer);
 
-        _hVal31 = _mm512_rori31_epu32::<1,{32-1}>(_hVal31);
+        //_hVal = _mm512_rori31_epu32::<1,{32-1}>(_hVal);
+        _hVal = _mm512_ror_epi32(_hVal, 1);
     }
 
-    _hVal31
+    _hVal
 }
 
 // canonical ntHash
@@ -324,148 +327,179 @@ unsafe fn _mm512_NTC_epu32_initial(kmerSeq: &[u8], k: usize, _ck: __m512i) -> (_
     (_hVal, _fhVal, _rhVal)
 }
 
+
 // ----------------------- sliding function
 
 
 // forward-strand ntHash for sliding k-mers
-unsafe fn _mm512_NTF_epu32_sliding(_fhVal: __m512i, _ck: __m512i, kmerSeq :&[u8], offsetOut :usize , offsetIn :usize) -> __m512i {
+unsafe fn _mm512_NTF_epu32_sliding(_fhVal: __m512i, _k: __m512i, kmerSeq :&[u8], offsetOut :usize , offsetIn :usize) -> __m512i {
 
     // construct input kmers
     let mut _in31 = _mm512_LKF_epu32(kmerSeq, offsetIn);
 
     let mut _out31 = _mm512_LKF_epu32(kmerSeq, offsetOut);
 
-    _out31 = _mm512_rorv31_epu32(
+    /*_out31 = _mm512_rorv31_epu32(
         _out31,
         _ck);
+    */
+    _out31 = _mm512_rolv_epi32(
+        _out31,
+        _k);
 
-    let mut _kmer31 = _mm512_xor_epi32(
+    let mut _kmer = _mm512_xor_epi32(
         _in31,
         _out31);
 
     // scan-shift kmers
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    // follows
+    // https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Hillis-Steele_Prefix_Sum.svg/450px-Hillis-Steele_Prefix_Sum.svg.png
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfffe,
-            _mm512_rori31_epu32::<30, {32 - 30}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<30, {32 - 30}>(
+            _mm512_rol_epi32(
+                _kmer, 1)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfffc,
-            _mm512_rori31_epu32::<29, {32 - 29}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<29, {32 - 29}>(
+            _mm512_rol_epi32(
+                _kmer, 2)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfff0,
-            _mm512_rori31_epu32::<27, {32 - 27}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<27, {32 - 27}>(
+            _mm512_rol_epi32(
+                _kmer, 4)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xff00,
-            _mm512_rori31_epu32::<23, {32 - 23}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<23, {32 - 23}>(
+            _mm512_rol_epi32(
+                _kmer, 8)));
+
 
     // var-shift the hash
-    let mut _hVal31 = _mm512_permutexvar_epi32(
+    let mut _hVal = _mm512_permutexvar_epi32(
         _mm512_set1_epi32(15),
         _fhVal);
 
     let _shift31 = _mm512_set_epi32(
-        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30);
+   //     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30);
+        16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
 
-    _hVal31 = _mm512_rorv31_epu32(
-        _hVal31,
+    /*
+    _hVal = _mm512_rorv31_epu32(
+        _hVal,
+        _shift31);
+    */
+    
+    _hVal = _mm512_rolv_epi32(
+        _hVal,
         _shift31);
 
     // merge everything together
-    _hVal31 = _mm512_xor_epi32(
-        _hVal31,
-        _kmer31);
+    _hVal = _mm512_xor_epi32(
+        _hVal,
+        _kmer);
 
-    _hVal31
+    _hVal
 }
 
 
-
-
 // reverse-complement ntHash for sliding k-mers
-unsafe fn _mm512_NTR_epu32_sliding(_rhVal: __m512i, _ck: __m512i, kmerSeq :&[u8], offsetOut :usize , offsetIn :usize) -> __m512i{
+unsafe fn _mm512_NTR_epu32_sliding(_rhVal: __m512i, _km: __m512i, kmerSeq :&[u8], offsetOut :usize , offsetIn :usize) -> __m512i{
     // construct input kmers
     let mut _in31 = _mm512_LKR_epu32(kmerSeq, offsetIn);
 
-    _in31 = _mm512_rorv31_epu32(
+    //_in31 = _mm512_rorv31_epu32(
+    _in31 = _mm512_rolv_epi32(
         _in31,
-        _ck);
+        _km);
 
-    let _out31 = _mm512_LKR_epu32(kmerSeq, offsetOut);
+    let mut _out31 = _mm512_LKR_epu32(kmerSeq, offsetOut);
 
-    let mut _kmer31 = _mm512_xor_epi32(
+    _out31 = _mm512_ror_epi32(
+        _out31,
+        1);
+
+    let mut _kmer = _mm512_xor_epi32(
         _in31,
         _out31);
 
     // scan-shift kmers
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    // follows
+    // https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Hillis-Steele_Prefix_Sum.svg/450px-Hillis-Steele_Prefix_Sum.svg.png
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfffe,
-            _mm512_rori31_epu32::<1, {32 - 1}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<1, {32 - 1}>(
+            _mm512_ror_epi32(
+                _kmer, 1)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfffc,
-            _mm512_rori31_epu32::<2, {32 - 2}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<2, {32 - 2}>(
+            _mm512_ror_epi32(
+                _kmer, 2)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xfff0,
-            _mm512_rori31_epu32::<4, {32 - 4}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<4, {32 - 4}>(
+            _mm512_ror_epi32(
+                _kmer, 4)));
 
-    _kmer31 = _mm512_xor_epi32(
-        _kmer31,
+    _kmer = _mm512_xor_epi32(
+        _kmer,
         _mm512_maskz_expand_epi32(
             0xff00,
-            _mm512_rori31_epu32::<8, {32 - 8}>(
-                _kmer31)));
+//            _mm512_rori31_epu32::<8, {32 - 8}>(
+            _mm512_ror_epi32(
+                _kmer, 8)));
 
     // var-shift the hash
-    let mut _hVal31 = _mm512_permutexvar_epi32(
+    let mut _hVal = _mm512_permutexvar_epi32(
         _mm512_set1_epi32(15),
         _rhVal);
+    
 
     let _shift31 = _mm512_set_epi32(
-        15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+   //     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,31);
+        16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
 
-    _hVal31 = _mm512_rorv31_epu32(
-        _hVal31,
+    //_hVal = _mm512_rorv31_epu32(
+    _hVal = _mm512_rorv_epi32(
+        _hVal,
         _shift31);
 
     // merge everything together
-    _hVal31 = _mm512_xor_epi32(
-        _hVal31,
-        _kmer31);
+    _hVal = _mm512_xor_epi32(
+        _hVal,
+        _kmer);
 
-    _hVal31 = _mm512_rori31_epu32::<1, {32 - 1}>(_hVal31);
+    //_hVal = _mm512_rori31_epu32::<1, {32 - 1}>(_hVal);
 
-    _hVal31
+    _hVal
 }
 
 
 // canonical ntHash for sliding k-mers
-unsafe fn _mm512_NTC_epu32_sliding(kmerSeq: &[u8], offsetOut: usize, offsetIn: usize, _ck: __m512i, _fhVal: __m512i, _rhVal: __m512i) -> (__m512i, __m512i, __m512i){
-    let _fhVal = _mm512_NTF_epu32_sliding(_fhVal, _ck, kmerSeq, offsetOut, offsetIn);
-    let _rhVal = _mm512_NTR_epu32_sliding(_rhVal, _ck, kmerSeq, offsetOut, offsetIn);
+unsafe fn _mm512_NTC_epu32_sliding(kmerSeq: &[u8], offsetOut: usize, offsetIn: usize, _k: __m512i, _km: __m512i, _fhVal: __m512i, _rhVal: __m512i) -> (__m512i, __m512i, __m512i){
+    let _fhVal = _mm512_NTF_epu32_sliding(_fhVal, _k,  kmerSeq, offsetOut, offsetIn);
+    let _rhVal = _mm512_NTR_epu32_sliding(_rhVal, _km, kmerSeq, offsetOut, offsetIn);
 
     let _hVal = _mm512_mask_blend_epi32(
         _mm512_cmpgt_epu32_mask(
@@ -477,33 +511,3 @@ unsafe fn _mm512_NTC_epu32_sliding(kmerSeq: &[u8], offsetOut: usize, offsetIn: u
     (_hVal, _fhVal, _rhVal)
 }
 
-
-        /*let mut lo= _mm512_extracti64x4_epi64(_hVal, 0);
-        let mut hval0 = _mm256_extract_epi32(lo, 0);
-        if debug { println!("first hash AVX512x32 {:x}", hval0); }
-        */
-
-
-	/*if (length - k) % 16 < 8{
-	    lo = _mm512_extracti64x4_epi64(_hVal, 0); }
-	else {
-	    lo = _mm512_extracti64x4_epi64(_hVal, 1); }
-	if (length - k) % 8 == 0 {
-	    hval0 = _mm256_extract_epi32(lo, 0); }
-	else if (length - k) % 8 == 1 {
-	    hval0 = _mm256_extract_epi32(lo, 1); }
-	else if (length - k) % 8 == 2 {
-	    hval0 = _mm256_extract_epi32(lo, 2); } 
-	else if (length - k) % 8 == 3 { 
-	    hval0 = _mm256_extract_epi32(lo, 3); }
-	else if (length - k) % 8 == 4 {
-	    hval0 = _mm256_extract_epi32(lo, 4); }
-	else if (length - k) % 8 == 5 {
-	    hval0 = _mm256_extract_epi32(lo, 5); }
-	else if (length - k) % 8 == 6 { 
-	    hval0 = _mm256_extract_epi32(lo, 6); }
-	else if (length - k) % 8 == 7 {
-	    hval0 = _mm256_extract_epi32(lo, 7); }
-        if debug { println!("final hash AVX512x32 {:x}", hval0); }
-        */
- 

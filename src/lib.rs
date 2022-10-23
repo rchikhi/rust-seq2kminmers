@@ -5,8 +5,10 @@ mod kminmer;
 pub use kminmer::{Kminmer, KminmerVec, KminmerHash};
 mod nthash_hpc;
 pub use nthash_hpc::NtHashHPCIterator;
-mod nthash2_avx512_32;
-pub use nthash2_avx512_32::NtHashSIMDIterator;
+//mod nthash2_avx512_32;
+//pub use nthash2_avx512_32::NtHashSIMDIterator;
+mod nthash_avx512_32;
+pub use nthash_avx512_32::NtHashSIMDIterator;
 //mod nthash_hpc_simd;
 //pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
 mod nthash_c;
@@ -26,8 +28,8 @@ pub enum HashMode {
 
 // minimizer hash type
 //pub type H  = u16; 
-//pub type H  = u32; // hash precision
-pub type H  = u64; 
+pub type H  = u32; // hash precision
+//pub type H  = u64; 
 //pub type FH = f32;
 pub type FH = f64;
 
@@ -217,10 +219,10 @@ impl<'a> Iterator for KminmersIterator<'a> {
                     };
                     self.seq_pos += 1;
                     j = self.seq_pos;
+                    println!("reg j {} hash {:#x?}",j,hash);
                     if hash < self.hash_bound { break; }
                 }
             }
-
             self.curr_pos.push(j); // raw sequence position
             let hash : KH = if self.mode == HashMode::Simd { (hash as u32).mixhash() } else { hash.mixhash() }; // only necessary if input hashes are u32
             self.curr_sk.push(hash);
