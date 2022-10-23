@@ -219,7 +219,6 @@ impl<'a> Iterator for KminmersIterator<'a> {
                     };
                     self.seq_pos += 1;
                     j = self.seq_pos;
-                    println!("reg j {} hash {:#x?}",j,hash);
                     if hash < self.hash_bound { break; }
                 }
             }
