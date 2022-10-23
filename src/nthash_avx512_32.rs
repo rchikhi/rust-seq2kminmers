@@ -6,7 +6,7 @@ use std::arch::x86_64::*;
 
 use std::alloc;
 
-use crate::{H, FH}; // hash precision
+use crate::{FH};
 
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ pub struct NtHashSIMDIterator<'a> {
 
 impl<'a> NtHashSIMDIterator<'a> {
     /// Creates a new NtHashSIMDIterator with internal state properly initialized.
-    pub fn new(seq: &'a [u8], k: usize, hash_bound: H) -> NtHashSIMDIterator<'a>{
+    pub fn new(seq: &'a [u8], k: usize, hash_bound: u32) -> NtHashSIMDIterator<'a>{
         assert!(k<=31);
         unsafe {
         let length = seq.len();
@@ -44,9 +44,9 @@ impl<'a> NtHashSIMDIterator<'a> {
         let mut _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
 
         let _ck = _mm512_set1_epi32((31 - (k % 31)) as i32);
-        let density = (hash_bound as FH) /(H::max_value() as FH); 
+        let density = (hash_bound as FH) /(u32::max_value() as FH); 
         let hash_bound = ((density as f32) * (u32::max_value() as f32)) as u32;
-        let _hashBound = _mm512_set1_epi32((hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
+        let _hashBound = _mm512_set1_epi32((hash_bound) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
 
         let (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_initial(seq, k, _ck);
 
@@ -79,26 +79,31 @@ impl<'a> NtHashSIMDIterator<'a> {
 
 
 impl<'a> Iterator for NtHashSIMDIterator<'a> {
-    type Item = (usize,H);
+    type Item = (usize,u32);
 
-    fn next(&mut self) -> Option<(usize,H)> {
+    fn next(&mut self) -> Option<(usize,u32)> {
         unsafe {
 
         let res;
+        let sentinel = self.length - self.k + 1;
 
         if self.pos_in_hash < self.nb_ones 
         {
-            res = Some((std::slice::from_raw_parts(self.pos_ptr,    16*32)[self.pos_in_hash] as usize, 
-                        std::slice::from_raw_parts(self.hashes_ptr, 16*32)[self.pos_in_hash] as H));
+            let pos =  std::slice::from_raw_parts(self.pos_ptr,    16*32)[self.pos_in_hash] as usize;
+            let hash = std::slice::from_raw_parts(self.hashes_ptr, 16*32)[self.pos_in_hash] as u32;
+            if pos >= sentinel {
+                res = None
+            } else { 
+                res = Some((pos,hash));
+            }
             self.pos_in_hash += 1;
         }
         else
         {
-            let sentinel = self.length - self.k + 1;
             let _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
             let _k  = _mm512_set1_epi32(self.k     as i32);
             let _km = _mm512_set1_epi32((self.k-1) as i32);
-            let _hashBound = _mm512_set1_epi32((self.hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
+            let _hashBound = _mm512_set1_epi32((self.hash_bound) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
             let mut _hVal = self._hVal;
             let mut _fhVal = self._fhVal;
             let mut _rhVal = self._rhVal;
@@ -131,7 +136,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                 if nb_ones > 0
                 {
                     res = Some((std::slice::from_raw_parts(self.pos_ptr,    16*32)[0] as usize, 
-                                std::slice::from_raw_parts(self.hashes_ptr, 16*32)[0] as H));
+                                std::slice::from_raw_parts(self.hashes_ptr, 16*32)[0] as u32));
                     self.pos_in_hash = 1;
                     self.nb_ones = nb_ones as usize;
                     break;
@@ -152,7 +157,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size_hint = (self.length as FH * (self.hash_bound as FH) /(H::max_value() as FH)) as usize;
+        let size_hint = (self.length as FH * (self.hash_bound as FH) /(u32::max_value() as FH)) as usize;
         (size_hint, Some(size_hint)) 
     }
 }
@@ -223,6 +228,8 @@ const SEEDC :u64 = 0x3193c18562a02b4c;
 const SEEDG :u64 = 0x20323ed082572324;
 const SEEDT :u64 = 0x295549f54be24456;
 //const SEEDN :u64 = 0x0000000000000000;
+const SHIFT :u64 = 0; // used to be 33, as in my vanilla nthash.hpp implementation in the nthash-AVX repo
+// but then, it's not compatible with Luiz's rust implementation when hashes are casted as u64
 
 // load forward-strand kmers
 unsafe fn _mm512_LKF_epu32(kmerSeq: &[u8], offset: usize) -> __m512i {
@@ -230,10 +237,10 @@ unsafe fn _mm512_LKF_epu32(kmerSeq: &[u8], offset: usize) -> __m512i {
         0, 0, 0, 0,
         0, 0, 0, 0,
         0, 0, 0, 0,
-        (SEEDT >> 33) as i32,
-        (SEEDG >> 33) as i32,
-        (SEEDC >> 33) as i32,
-        (SEEDA >> 33) as i32);
+        (SEEDT >> SHIFT) as i32,
+        (SEEDG >> SHIFT) as i32,
+        (SEEDC >> SHIFT) as i32,
+        (SEEDA >> SHIFT) as i32);
 
     let _kmer = _mm512_permutexvar_epi32(
         _mm512_LKX_epu32(
@@ -249,10 +256,10 @@ unsafe fn _mm512_LKR_epu32(kmerSeq: &[u8], offset: usize) -> __m512i {
         0, 0, 0, 0,
         0, 0, 0, 0,
         0, 0, 0, 0,
-        (SEEDA >> 33) as i32,
-        (SEEDC >> 33) as i32,
-        (SEEDG >> 33) as i32,
-        (SEEDT >> 33) as i32);
+        (SEEDA >> SHIFT) as i32,
+        (SEEDC >> SHIFT) as i32,
+        (SEEDG >> SHIFT) as i32,
+        (SEEDT >> SHIFT) as i32);
 
     let _kmer = _mm512_permutexvar_epi32(
         _mm512_LKX_epu32(

@@ -12,6 +12,7 @@ use criterion::{Bencher, Criterion, Throughput, BenchmarkId};
 use rand::distributions::{Distribution, Uniform};
 
 use nthash::{nthash, NtHashIterator};
+use nthash32;
 #[allow(unused_imports)]
 use rust_seq2kminmers::{KminmersIterator, KminmerType, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, nthash_c, HashMode};
 
@@ -34,6 +35,7 @@ fn nthash_bench(c: &mut Criterion) {
 
     group.bench_with_input(BenchmarkId::new("hpc_plain", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
         let _hpc_str = rust_seq2kminmers::hpc(i);
+        bencher::black_box(_hpc_str);
     })});
 
     group.bench_with_input(BenchmarkId::new("hpc_encode_rle", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
@@ -46,7 +48,7 @@ fn nthash_bench(c: &mut Criterion) {
         bencher::black_box(_hpc_str);
     })});
 
-    group.bench_with_input(BenchmarkId::new("nthash", seq_len), &seq,
+    group.bench_with_input(BenchmarkId::new("nthash (64)", seq_len), &seq,
     |b: &mut Bencher, i: &String| {
         b.iter(|| {
             nthash(i.as_bytes(), 5);
@@ -58,8 +60,17 @@ fn nthash_bench(c: &mut Criterion) {
             let iter = NtHashIterator::new(i.as_bytes(), 5).unwrap();
             //  iter.for_each(drop);
             let _res = iter.collect::<Vec<u64>>(); // original nthash iterator only has 64 bits
+            bencher::black_box(_res);
         })});
 
+    group.bench_with_input(BenchmarkId::new("nthash32iterator_luiz", seq_len), &seq,
+    |b: &mut Bencher, i: &String| {
+        b.iter(|| {
+            let iter = nthash32::NtHashIterator::new(i.as_bytes(), 5).unwrap();
+            //  iter.for_each(drop);
+            let _res = iter.collect::<Vec<u32>>(); // original nthash iterator only has 64 bits
+            bencher::black_box(_res);
+        })});
 
     group.bench_with_input(BenchmarkId::new("nthashiterator_hpc", seq_len), &seq,
     |b: &mut Bencher, i: &String| {
@@ -68,6 +79,7 @@ fn nthash_bench(c: &mut Criterion) {
             let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
             let iter = NtHashHPCIterator::new(i.as_bytes(), 5, hash_bound).unwrap();
             let _res = iter.collect::<Vec<(usize, H)>>();
+            bencher::black_box(_res);
         })});
 
     group.bench_with_input(BenchmarkId::new("nthashiterator_simd", seq_len), &seq,
@@ -77,11 +89,13 @@ fn nthash_bench(c: &mut Criterion) {
             let hash_bound = ((density as FH) * (H::max_value() as FH)) as H;
             let iter = NtHashSIMDIterator::new(i.as_bytes(), 5, hash_bound);
             let _res = iter.collect::<Vec<(usize, H)>>();
+            bencher::black_box(_res);
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
         let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Simd).unwrap();
         let _res = iter.collect::<Vec<KminmerType>>();
+        bencher::black_box(_res);
     })});
 
 
@@ -90,6 +104,7 @@ fn nthash_bench(c: &mut Criterion) {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Regular).unwrap();
             let _res = iter.collect::<Vec<KminmerType>>();
+            bencher::black_box(_res);
         })});
 
     group.bench_with_input(BenchmarkId::new("kminmers_hpc", seq_len), &seq,
@@ -97,6 +112,7 @@ fn nthash_bench(c: &mut Criterion) {
         b.iter(|| {
             let iter = KminmersIterator::new(i.as_bytes(), 10, 5, 0.01, HashMode::Hpc).unwrap();
             let _res = iter.collect::<Vec<KminmerType>>();
+            bencher::black_box(_res);
         })});
 
     // The following bench requires to have compiled ntHash-C (https://github.com/rchikhi/ntHash-C)

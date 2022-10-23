@@ -196,7 +196,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             if self.mode == HashMode::Simd {
                 match self.nthash_simd_iterator.as_mut().unwrap().next()
                 {
-                    Some(n) => { (j,hash) = n; } 
+                    Some(n) => { (j,hash) = n; }
                     None => return None
                 };
             }
@@ -217,9 +217,9 @@ impl<'a> Iterator for KminmersIterator<'a> {
                         Some(x) => { hash = x as H;}
                         None => return None
                     };
-                    self.seq_pos += 1;
                     j = self.seq_pos;
-                    if hash < self.hash_bound { break; }
+                    self.seq_pos += 1;
+                    if hash <= self.hash_bound { break; }
                 }
             }
             self.curr_pos.push(j); // raw sequence position

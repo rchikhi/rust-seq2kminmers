@@ -2,6 +2,8 @@ use std::fs;
 use rust_seq2kminmers::{KminmersIterator, HashMode, Kminmer};
 use rust_seq2kminmers::{hpc, encode_rle, encode_rle_simd};
 
+// these tests were made for H=u64
+// if they fail when H=u32, that's normal
 #[test]
 fn main() {
 

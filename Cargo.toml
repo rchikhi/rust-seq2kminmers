@@ -13,6 +13,7 @@ license = "MIT/Apache-2.0"
 [dependencies]
 array_tool = "1.0.3"
 nthash = "0.5.1"
+nthash32 = { git = "https://github.com/rchikhi/rust-nthash32"  }
 thiserror = "1.0"
 fxhash = "0.2.1"
 #rust-parallelfastx = "0.1.1"
