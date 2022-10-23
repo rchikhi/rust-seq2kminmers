@@ -11,6 +11,7 @@ fn main() {
 
     //let mode = HashMode::Regular;
     let mode = HashMode::Simd;
+    //let mode = HashMode::Hpc;
 
     // A simple example given just a sequence in a string
     if args.len() < 2
