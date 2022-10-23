@@ -1,5 +1,7 @@
 
-/*unfinished code
+/*unfinished code, beginning of october 2022. 
+ * probably will never be finished, that wasn't the right approach to pre-compute
+ * everything. better to bufferize as i do now (mid-october 2022).
  * */
 
 #[cfg(target_arch = "x86_64")]
@@ -47,12 +49,8 @@ impl Iterator for NtHashHPCSIMDIterator {
     }
 }
 
-// follows encode_rle_simd
-// special case for ki=32, facilitates things
-// 
-// this is a WIP, completely unfinished (maybe for a long time)
-//
-// caution: only works for sequences lengths multiples of 32, otherwise truncates to 
+// special case for k=32, facilitates things
+// & would only have worked for sequences lengths multiples of 32, otherwise truncates to 
 // multiple of 32 below
 #[allow(unused_assignments,unused_variables)]
 pub fn nthash_hpc_simd_32(n: &[u8], k: usize, hash_bound: H) -> Vec<H>

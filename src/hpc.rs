@@ -41,10 +41,9 @@ pub fn hpc(s: &str) -> String
 }
 
 // simd version. seems to work
-pub fn encode_rle_simd(s: &str) -> (String,Vec<u32>)
+pub fn encode_rle_simd(s: &[u8]) -> (String,Vec<u32>)
 {
-    let n : &[u8] = s.as_bytes();
-    let ptr = n.as_ptr() as *const i8;
+    let ptr = s.as_ptr() as *const i8;
     let len = s.len();
     //let width = 32; // would be nice to be 32 but my machine doesn't support _mm512_mask_compressstoreu_epi8
     let width: usize = 16; // nb of nucleotides considered "in parallel"

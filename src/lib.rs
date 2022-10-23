@@ -1,6 +1,6 @@
 #![feature(stdsimd)]
 #![feature(core_intrinsics)]
-use nthash::NtHashIterator;
+use nthash32::NtHashIterator;
 mod kminmer;
 pub use kminmer::{Kminmer, KminmerVec, KminmerHash};
 mod nthash_hpc;
@@ -9,10 +9,10 @@ pub use nthash_hpc::NtHashHPCIterator;
 //pub use nthash2_avx512_32::NtHashSIMDIterator;
 mod nthash_avx512_32;
 pub use nthash_avx512_32::NtHashSIMDIterator;
-//mod nthash_hpc_simd;
-//pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
-mod nthash_c;
-pub use nthash_c::nthash_c;
+mod nthash_hpc_simd;
+pub use nthash_hpc_simd::NtHashHPCSIMDIterator;
+//mod nthash_c;
+//pub use nthash_c::nthash_c;
 mod hpc;
 pub use hpc::{hpc, encode_rle, encode_rle_simd};
 
@@ -73,7 +73,7 @@ pub struct KminmersIterator<'a> {
     l: usize,
     hash_bound: H,
     mode: HashMode,
-    //nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator>,
+    nthash_hpc_simd_iterator: Option<NtHashHPCSIMDIterator<'a>>,
     nthash_hpc_iterator: Option<NtHashHPCIterator<'a>>,
     nthash_simd_iterator: Option<NtHashSIMDIterator<'a>>,
     nthash_iterator: Option<NtHashIterator<'a>>,
@@ -90,7 +90,7 @@ impl<'a> KminmersIterator<'a> {
 
         let hash_bound = ((density as FH) * (H::MAX as FH)) as H;
 
-        //let mut nthash_hpc_simd_iterator = None;
+        let mut nthash_hpc_simd_iterator = None;
         let mut nthash_hpc_iterator = None;
         let mut nthash_simd_iterator = None;
         let mut nthash_iterator = None;
@@ -101,15 +101,15 @@ impl<'a> KminmersIterator<'a> {
             else if mode == HashMode::Simd {
                 nthash_simd_iterator = Some(NtHashSIMDIterator::new(seq, l, hash_bound));
             }
-            /*else if mode == HashMode::HpcSimd {
-                nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound));
-            }*/
+            else if mode == HashMode::HpcSimd {
+                nthash_hpc_simd_iterator = Some(NtHashHPCSIMDIterator::new(seq, l, hash_bound).unwrap());
+            }
             else { 
                 nthash_iterator = Some(NtHashIterator::new(seq, l).unwrap());
             }
         }
         
-        let curr_sk  = Vec::<KH>    ::with_capacity((seq.len() as FH * density) as usize);
+        let curr_sk  = Vec::<KH>   ::with_capacity((seq.len() as FH * density) as usize);
         let curr_pos = Vec::<usize>::with_capacity((seq.len() as FH * density) as usize);
 
         Ok(KminmersIterator {
@@ -118,7 +118,7 @@ impl<'a> KminmersIterator<'a> {
             l,
             hash_bound,
             mode,
-            //nthash_hpc_simd_iterator,
+            nthash_hpc_simd_iterator,
             nthash_hpc_iterator,
             nthash_simd_iterator,
             nthash_iterator,
@@ -184,17 +184,17 @@ impl<'a> Iterator for KminmersIterator<'a> {
         {
             let mut j;
             let mut hash: H;
-            /*if self.mode == HashMode::HpcSimd {
-                match self.nthash_hpc_simd_iterator.as_mut().unwrap().next()
+            if self.mode == HashMode::HpcSimd {
+                // the unwrap_or_else() magic is just an optimization:
+                // https://www.reddit.com/r/rust/comments/dmws17/new_to_rust_is_unwrap_free/f55lalo/
+                match self.nthash_hpc_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; } 
                     None => return None
                 };
             }
-            else 
-            */
-            if self.mode == HashMode::Simd {
-                match self.nthash_simd_iterator.as_mut().unwrap().next()
+            else if self.mode == HashMode::Simd {
+                match self.nthash_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; }
                     None => return None
@@ -202,7 +202,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
             else if self.mode == HashMode::Hpc
             {
-                match self.nthash_hpc_iterator.as_mut().unwrap().next()
+                match self.nthash_hpc_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; } 
                     None => return None
@@ -212,7 +212,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             {
                 loop
                 {
-                    match self.nthash_iterator.as_mut().unwrap().next()
+                    match self.nthash_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                     {
                         Some(x) => { hash = x as H;}
                         None => return None

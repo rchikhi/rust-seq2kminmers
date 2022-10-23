@@ -14,7 +14,8 @@ use rand::distributions::{Distribution, Uniform};
 use nthash::{nthash, NtHashIterator};
 use nthash32;
 #[allow(unused_imports)]
-use rust_seq2kminmers::{KminmersIterator, KminmerType, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, nthash_c, HashMode};
+use rust_seq2kminmers::{KminmersIterator, KminmerType, KminmerVec, NtHashHPCIterator, NtHashSIMDIterator, HashMode};
+//use rust_seq2kminmers::{nthash_c};
 
 fn nthash_bench(c: &mut Criterion) {
     let range = Uniform::from(0..4);

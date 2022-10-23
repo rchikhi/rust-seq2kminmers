@@ -46,7 +46,7 @@ impl<'a> NtHashSIMDIterator<'a> {
         let _ck = _mm512_set1_epi32((31 - (k % 31)) as i32);
         let density = (hash_bound as FH) /(H::MAX as FH); 
         let hash_bound = ((density as f32) * (u32::MAX as f32)) as u32;
-        let _hashBound = _mm512_set1_epi32((hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
+        let _hashBound = _mm512_set1_epi32((hash_bound) as i32); // TODO need to figure out why _sometimes_ I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
 
         let (_hVal, _fhVal, _rhVal) = _mm512_NTC_epu32_initial(seq, k, _ck);
 
@@ -103,7 +103,7 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             let _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
             let _k  = _mm512_set1_epi32(self.k     as i32);
             let _km = _mm512_set1_epi32((self.k-1) as i32);
-            let _hashBound = _mm512_set1_epi32((self.hash_bound/2) as i32); // TODO need to figure out why I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
+            let _hashBound = _mm512_set1_epi32((self.hash_bound) as i32); // TODO need to figure out why _sometimes I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
             let mut _hVal = self._hVal;
             let mut _fhVal = self._fhVal;
             let mut _rhVal = self._rhVal;
