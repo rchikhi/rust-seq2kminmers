@@ -147,7 +147,6 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
             }
         }
 
-        println!("simd res: {:#x?}",res);
         res
         }
     }
