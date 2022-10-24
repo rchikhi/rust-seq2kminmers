@@ -45,7 +45,7 @@ fn nthash_bench(c: &mut Criterion) {
     })});
 
     group.bench_with_input(BenchmarkId::new("hpc_encode_rle_simd", seq_len), &seq, |b: &mut Bencher, i: &String| { b.iter(|| {
-        let _hpc_str = rust_seq2kminmers::encode_rle_simd(i);
+        let _hpc_str = rust_seq2kminmers::encode_rle_simd(i.as_bytes());
         bencher::black_box(_hpc_str);
     })});
 

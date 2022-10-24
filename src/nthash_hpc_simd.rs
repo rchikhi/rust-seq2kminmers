@@ -34,8 +34,6 @@ impl<'a> NtHashHPCSIMDIterator<'a> {
     pub fn new(seq: &'a [u8], l: usize, hash_bound: H) -> Result<NtHashHPCSIMDIterator<'a>> {
         let (hpc_seq, hpc_pos) = encode_rle_simd(seq);
 
-        //let it = NtHashSIMDIterator::new(hpc_seq.as_bytes().as_ref(), l, hash_bound);
-
         let mut res = NtHashHPCSIMDIterator {
             hpc_seq: hpc_seq,
             hpc_pos,
@@ -46,16 +44,17 @@ impl<'a> NtHashHPCSIMDIterator<'a> {
         // And seems rust dislike them very much.
         // So look at what it made me do:
         let hpc_seq = res.hpc_seq.as_bytes().as_ptr() as *const u8;
+        
         unsafe{
         res.it = Some(NtHashSIMDIterator::new(std::slice::from_raw_parts(hpc_seq,res.hpc_seq.len()), l, hash_bound));
         }
+
         Ok(res)
     }
 }
 
 impl<'a> Iterator for NtHashHPCSIMDIterator<'a> {
     type Item = (usize,H);
-
 
     fn next(&mut self) -> Option<(usize,H)> {
         let res = self.it.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next();
