@@ -43,7 +43,7 @@ impl<'a> NtHashSIMDIterator<'a> {
         let mut _positions = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let mut _16 = _mm512_set_epi32(16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
 
-        let _ck = _mm512_set1_epi32((31 - (k % 31)) as i32);
+        let _ck = _mm512_set1_epi32((32 - (k % 32)) as i32);
         let density = (hash_bound as FH) /(H::MAX as FH); 
         let hash_bound = ((density as f32) * (u32::MAX as f32)) as u32;
         let _hashBound = _mm512_set1_epi32((hash_bound) as i32); // TODO need to figure out why _sometimes_ I need to divide hash_bound by 2 here to get values comparable to HashMode::Regular
@@ -125,10 +125,15 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
                 i += 16;
         
 
-                let mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
-                let nb_ones = mask.count_ones();
+                let mut mask = _mm512_cmp_epu32_mask(_hVal, _hashBound, 1 /*LT*/);
+                let mut nb_ones = mask.count_ones();
                 if nb_ones > 0
                 {
+                    if i >= sentinel {
+                        // avoid including info beyond the buffer
+                        mask &= (((1 as u32) << (sentinel % 16) as u32) - 1) as u16; // ignore the rest of the buffer, the string end earlier
+                        nb_ones = mask.count_ones();
+                    }
                     _mm512_mask_compressstoreu_epi32(self.hashes_ptr  as *mut u8, mask, _hVal);
                     _mm512_mask_compressstoreu_epi32(self.pos_ptr  as *mut u8, mask, _positions);                
                 }
@@ -304,7 +309,7 @@ unsafe fn _mm512_NTR_epu32(kmerSeq: &[u8], k: usize, _ck: __m512i) -> __m512i {
             _kmer,
             _ck);*/
 
-        _kmer = _mm512_rolv_epi32(
+        _kmer = _mm512_rorv_epi32(
             _kmer,
             _ck);
 

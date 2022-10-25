@@ -18,7 +18,7 @@ pub use hpc::{hpc, encode_rle, encode_rle_simd};
 
 use std::io::{Result};
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum HashMode {
     Regular,
     Hpc,

@@ -9,10 +9,10 @@ use rust_seq2kminmers::{encode_rle, hpc, encode_rle_simd};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    //let mode = HashMode::Regular;
+    let mode = HashMode::Regular;
     //let mode = HashMode::Simd;
     //let mode = HashMode::Hpc;
-    let mode = HashMode::HpcSimd;
+    //let mode = HashMode::HpcSimd;
 
     // A simple example given just a sequence in a string
     if args.len() < 2
@@ -39,13 +39,16 @@ fn main() {
         println!("seq:    {:?}",seq);
         println!("HPC:    {:?}",hpc(seq));
         // no point displaying that, correctness is tested in tests/main.src
-        //println!("HPCopt: {:?}",encode_rle_simd(seq));
+        println!("HPCopt: {:?}",encode_rle_simd(seq.as_bytes()));
         //println!("encode_rle:{:?}",encode_rle(seq));
         println!("Demonstrating how to construct k-min-mers (l=31, k=5, d=0.1) out of a test sequence: {}",seq);
-        let iter = KminmersIterator::new(seq.as_bytes(), 31, 5, 0.1, mode).unwrap();
-        for kminmer in iter
-        {
-            println!("kminmer: {:?}",kminmer);
+        for mode in vec![HashMode::Regular, HashMode::Simd, HashMode::Hpc, HashMode::HpcSimd] {
+            println!("mode: {:?}",mode);
+            let iter = KminmersIterator::new(seq.as_bytes(), 28, 5, 0.1, mode).unwrap();
+            for kminmer in iter
+            {
+                println!("kminmer: {:?}",kminmer);
+            }
         }
     }
 
