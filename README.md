@@ -4,9 +4,9 @@ Rust crate to convert any DNA sequence to an iterator of its k-min-mers. It is u
 
 # Intro
 
-For non-bioinformaticians, this library essentially performs a variant of Run Length Encoding + a fast rolling hash of DNA sequences.
+For non-bioinformaticians, this library essentially performs a variant of Run Length Encoding + a fast rolling hash of DNA sequences. Its purpose is to very quickly convert any DNA sequence into an ordered list of hashes. This then allows to sketch the DNA sequence and do various computations faster, on the sketch rather the initial nucleotides.
 
-For a primer on k-min-mers, see: https://www.cell.com/cell-systems/fulltext/S2405-4712(21)00332-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS240547122100332X%3Fshowall%3Dtrue
+For a primer on k-min-mers and minimizer-space representations, see: https://www.cell.com/cell-systems/fulltext/S2405-4712(21)00332-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS240547122100332X%3Fshowall%3Dtrue
 
 # Features
 
