@@ -20,7 +20,7 @@ For a primer on k-min-mers and minimizer-space representations, see: https://www
 
 # Performance
 
-Very good, thanks for asking 😉 Scalar ntHash is around 100-200 MB/sec, SIMD ntHash around 1 GB/sec, HPC ntHash around 2-3 GB/sec
+Very good, thanks for asking 😉 Scalar ntHash is around 100-200 MB/sec, SIMD ntHash around 1 GB/sec, HPC alone around 4 GB/sec
 
 # Testing
 
