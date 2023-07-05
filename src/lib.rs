@@ -187,6 +187,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             if self.mode == HashMode::HpcSimd {
                 // the unwrap_or_else() magic is just an optimization:
                 // https://www.reddit.com/r/rust/comments/dmws17/new_to_rust_is_unwrap_free/f55lalo/
+                if self.nthash_hpc_simd_iterator.is_none() { return None; }
                 match self.nthash_hpc_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; } 
@@ -194,6 +195,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 };
             }
             else if self.mode == HashMode::Simd {
+                if self.nthash_simd_iterator.is_none() { return None; }
                 match self.nthash_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; }
@@ -202,6 +204,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
             }
             else if self.mode == HashMode::Hpc
             {
+                if self.nthash_hpc_iterator.is_none() { return None; }
                 match self.nthash_hpc_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
                     Some(n) => { (j,hash) = n; } 
@@ -212,7 +215,8 @@ impl<'a> Iterator for KminmersIterator<'a> {
             {
                 loop
                 {
-                    match self.nthash_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
+                    if self.nthash_iterator.is_none() { return None; }
+                    match self.nthash_iterator.as_mut().unwrap().next()
                     {
                         Some(x) => { hash = x as H;}
                         None => return None
