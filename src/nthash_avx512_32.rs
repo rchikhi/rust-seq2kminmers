@@ -82,10 +82,12 @@ impl<'a> Iterator for NtHashSIMDIterator<'a> {
     type Item = (usize,u32);
 
     fn next(&mut self) -> Option<(usize,u32)> {
+        if self.length < self.k { return None; }
         unsafe {
 
         let res;
         let sentinel = self.length - self.k + 1;
+
 
         if self.pos_in_hash < self.nb_ones 
         {
