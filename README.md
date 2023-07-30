@@ -24,10 +24,10 @@ Very good, thanks for asking 😉 Per thread, scalar ntHash is around 100-200 MB
 
 # Testing
 
-    cargo run # to run a small test in main.rs
+    cargo +nightly run # to run a small test in main.rs
 
-    cargo run -- [filename.fasta] [nb_threads] # to run a bigger test using an input file (also main.rs)
+    cargo +nightly run -- [filename.fasta] [nb_threads] # to run a bigger test using an input file (also main.rs)
 
-    cargo test # run some tests 
+    cargo +nightly test # run some tests 
 
-    cargo bench # run some throughput benchmarks
+    cargo +nightly bench # run some throughput benchmarks
