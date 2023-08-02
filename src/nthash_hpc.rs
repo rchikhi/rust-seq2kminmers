@@ -190,10 +190,10 @@ impl<'a> NtHashHPCIterator<'a> {
 }
 
 impl<'a> Iterator for NtHashHPCIterator<'a> {
-    type Item = (usize,H);
+    type Item = (usize, usize, H);
 
 
-    fn next(&mut self) -> Option<(usize,H)> {
+    fn next(&mut self) -> Option<(usize, usize, H)> {
         unsafe {
             //let k = TEST_CONST_K;
             let k = self.k;
@@ -231,7 +231,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
                 hash = H::min(self.rh, self.fh);
                 if hash <= self.hash_bound {
                     prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+BUFLEN-1,BUFLEN));
-                    return Some((prev_current_idx, hash))
+                    return Some((prev_current_idx, (self.current_idx_plus_k-1) as usize, hash))
                 }
             }
             else  {
@@ -278,7 +278,7 @@ impl<'a> Iterator for NtHashHPCIterator<'a> {
             }
 
         prev_current_idx = *self.idx_buffer.get_unchecked(std::intrinsics::unchecked_rem(self.buffer_pos+BUFLEN-1,BUFLEN));
-        Some((prev_current_idx, hash))
+        Some((prev_current_idx, (self.current_idx_plus_k-1) as usize, hash))
         }
     }
 

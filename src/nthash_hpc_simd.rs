@@ -24,7 +24,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct NtHashHPCSIMDIterator<'a> {
     hpc_seq : String,
     hpc_pos :Vec<u32>,
-    it : Option<NtHashSIMDIterator<'a>>
+    it : Option<NtHashSIMDIterator<'a>>,
+    l : usize
 }
 
 // this is just a wrapper over NtHashSIMDIterator except it passes the HPC string
@@ -37,7 +38,8 @@ impl<'a> NtHashHPCSIMDIterator<'a> {
         let mut res = NtHashHPCSIMDIterator {
             hpc_seq: hpc_seq,
             hpc_pos,
-            it: None
+            it: None, 
+            l
         };
 
         // OK I was trying to make a self referential structure.
@@ -46,7 +48,7 @@ impl<'a> NtHashHPCSIMDIterator<'a> {
         let hpc_seq = res.hpc_seq.as_bytes().as_ptr() as *const u8;
         
         unsafe{
-        res.it = Some(NtHashSIMDIterator::new(std::slice::from_raw_parts(hpc_seq,res.hpc_seq.len()), l, hash_bound));
+        res.it = Some(NtHashSIMDIterator::new(std::slice::from_raw_parts(hpc_seq, res.hpc_seq.len()), l, hash_bound));
         }
 
         Ok(res)
@@ -54,12 +56,12 @@ impl<'a> NtHashHPCSIMDIterator<'a> {
 }
 
 impl<'a> Iterator for NtHashHPCSIMDIterator<'a> {
-    type Item = (usize,H);
+    type Item = (usize, usize, H);
 
-    fn next(&mut self) -> Option<(usize,H)> {
+    fn next(&mut self) -> Option<(usize, usize, H)> {
         let res = self.it.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next();
         if let Some(res) = res {
-            Some((self.hpc_pos[res.0] as usize,res.1))
+            Some((self.hpc_pos[res.0] as usize, self.hpc_pos[res.0+self.l-1] as usize, res.1))
         } else { 
             None
         }

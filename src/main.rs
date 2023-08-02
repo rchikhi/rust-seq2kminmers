@@ -9,11 +9,6 @@ use rust_seq2kminmers::{encode_rle, hpc, encode_rle_simd};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let mode = HashMode::Regular;
-    //let mode = HashMode::Simd;
-    //let mode = HashMode::Hpc;
-    //let mode = HashMode::HpcSimd;
-
     // A simple example given just a sequence in a string
     if args.len() < 2
     {
@@ -39,8 +34,8 @@ fn main() {
         println!("seq:    {:?}",seq);
         println!("HPC:    {:?}",hpc(seq));
         // no point displaying that, correctness is tested in tests/main.src
-        println!("HPCopt: {:?}",encode_rle_simd(seq.as_bytes()));
-        //println!("encode_rle:{:?}",encode_rle(seq));
+        //println!("HPCopt: {:?}",encode_rle_simd(seq.as_bytes()));
+        println!("encode_rle:{:?}",encode_rle(seq));
         println!("Demonstrating how to construct k-min-mers (l=31, k=5, d=0.1) out of a test sequence: {}",seq);
         for mode in vec![HashMode::Regular, HashMode::Simd, HashMode::Hpc, HashMode::HpcSimd] {
             println!("mode: {:?}",mode);
@@ -62,6 +57,10 @@ fn main() {
         let nb_threads = args[2].parse::<i32>().unwrap();
         println!("Enumerating k-min-mers for the input file {} in parallel ({} threads)", filename, nb_threads);
 
+        let mode = HashMode::Regular;
+        //let mode = HashMode::Simd;
+        //let mode = HashMode::Hpc;
+        //let mode = HashMode::HpcSimd;
 
         let task = |seq_str: &[u8], _seq_id: &str|  {
             let iter = KminmersIterator::new(seq_str, l, k, d, mode).unwrap();

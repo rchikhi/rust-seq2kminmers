@@ -69,14 +69,14 @@ impl KminmerVec {
     
     // Pretty-print a Kminmer.
     pub fn print(&self) -> String {
-	// prints only the first 2 digits of each minimizer hash
-	let mut s = String::new();
-	for x in self.mers.iter() {
-	    s = format!("{}{} ", s, x.to_string()[..2].to_string());
-	}
-	s
+        // prints only the first 2 digits of each minimizer hash
+        let mut s = String::new();
+        for x in self.mers.iter() {
+            s = format!("{}{} ", s, x.to_string()[..2].to_string());
+        }
+        s
     }
-    
+
     // Obtain a raw Vec of minimizer hashes.
     pub fn mers(&self) -> Vec<H> {
         self.mers.to_vec()

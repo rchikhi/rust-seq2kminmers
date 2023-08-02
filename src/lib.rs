@@ -183,6 +183,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
         loop
         {
             let mut j;
+            let mut jend; // the coordinate of last position of the (possibly HPC-space) minimizer
             let mut hash: H;
             if self.mode == HashMode::HpcSimd {
                 // the unwrap_or_else() magic is just an optimization:
@@ -190,7 +191,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 if self.nthash_hpc_simd_iterator.is_none() { return None; }
                 match self.nthash_hpc_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
-                    Some(n) => { (j,hash) = n; } 
+                    Some(n) => { (j, jend, hash) = n; } 
                     None => return None
                 };
             }
@@ -198,7 +199,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 if self.nthash_simd_iterator.is_none() { return None; }
                 match self.nthash_simd_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
-                    Some(n) => { (j,hash) = n; }
+                    Some(n) => { (j, hash) = n; jend = j+self.l-1; }
                     None => return None
                 };
             }
@@ -207,7 +208,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                 if self.nthash_hpc_iterator.is_none() { return None; }
                 match self.nthash_hpc_iterator.as_mut().unwrap_or_else(|| unsafe { std::hint::unreachable_unchecked() }).next()
                 {
-                    Some(n) => { (j,hash) = n; } 
+                    Some(n) => { (j, jend, hash) = n; } 
                     None => return None
                 };
             }
@@ -222,6 +223,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
                         None => return None
                     };
                     j = self.seq_pos;
+                    jend = j + self.l - 1;
                     self.seq_pos += 1;
                     if hash <= self.hash_bound { break; }
                 }
@@ -253,7 +255,7 @@ impl<'a> Iterator for KminmersIterator<'a> {
 
                 // new_from_hash is currently only good when KH is u64 and not Simd: otherwise slows things down at the
                 // Dashmap level due to many kminmer hash collision
-                res = Some(KminmerHash::new_from_hash(nthash, self.curr_pos[self.count], j + self.l - 1, self.count, rev));
+                res = Some(KminmerHash::new_from_hash(nthash, self.curr_pos[self.count], jend, self.count, rev));
                 self.count += 1;
                 break; 
             }
